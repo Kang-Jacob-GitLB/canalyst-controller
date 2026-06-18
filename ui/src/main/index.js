@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { spawn } from 'child_process'
 
@@ -57,6 +57,23 @@ function stopCore() {
     coreProc = null
   }
 }
+
+// 파일 선택 다이얼로그(렌더러 → main IPC). 취소 시 null 반환.
+ipcMain.handle('pick-open-file', async (_event, options = {}) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: options.filters
+  })
+  return result.canceled ? null : result.filePaths[0]
+})
+
+ipcMain.handle('pick-save-file', async (_event, options = {}) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    filters: options.filters,
+    defaultPath: options.defaultPath
+  })
+  return result.canceled ? null : result.filePath
+})
 
 function createWindow() {
   mainWindow = new BrowserWindow({

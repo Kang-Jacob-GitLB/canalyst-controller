@@ -54,4 +54,21 @@ describe('ToolsPanel', () => {
     expect(screen.getByText('로깅 중지')).toBeInTheDocument()
     expect(screen.getByText(/기록 중/)).toBeInTheDocument()
   })
+
+  it('찾아보기 버튼이 파일 다이얼로그 경로를 입력에 채운다', async () => {
+    window.canctl = {
+      pickOpenFile: vi.fn().mockResolvedValue('C:\\sel\\vehicle.dbc'),
+      pickSaveFile: vi.fn().mockResolvedValue('C:\\sel\\out.jsonl')
+    }
+    try {
+      render(<ToolsPanel {...baseProps} />)
+      const browse = screen.getAllByText('찾아보기')
+      expect(browse).toHaveLength(3) // 로그 / 재생 / DBC
+      await userEvent.setup().click(browse[2]) // DBC 찾아보기
+      expect(window.canctl.pickOpenFile).toHaveBeenCalled()
+      expect(screen.getByDisplayValue('C:\\sel\\vehicle.dbc')).toBeInTheDocument()
+    } finally {
+      delete window.canctl
+    }
+  })
 })

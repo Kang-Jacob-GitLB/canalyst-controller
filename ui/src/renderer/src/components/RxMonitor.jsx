@@ -1,4 +1,4 @@
-import { Fragment, useRef } from 'react'
+import { Fragment, useEffect, useRef } from 'react'
 
 function fmtData(data) {
   return data.map((b) => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')
@@ -37,7 +37,16 @@ export default function RxMonitor({ frames, onClear }) {
   }
   const t0 = t0Ref.current
 
-  const rows = frames.slice().reverse() // 최신이 위로
+  // 자동 스크롤: 하단 근처일 때만 최신 프레임까지 따라간다(위로 살펴보는 중이면 방해하지 않음).
+  const wrapRef = useRef(null)
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+    if (nearBottom) el.scrollTop = el.scrollHeight
+  }, [frames.length])
+
+  const rows = frames // 오래된 → 최신 순(최신이 아래)
 
   return (
     <section className="rx-monitor">
@@ -45,7 +54,7 @@ export default function RxMonitor({ frames, onClear }) {
         <h2>송수신 모니터 ({frames.length})</h2>
         <button onClick={onClear}>지우기</button>
       </div>
-      <div className="rx-table-wrap">
+      <div className="rx-table-wrap" ref={wrapRef}>
         <table>
           <thead>
             <tr>

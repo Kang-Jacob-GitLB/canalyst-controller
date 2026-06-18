@@ -31,6 +31,12 @@ export default function ToolsPanel({ filterIds, logStatus, onSetFilter, onStartL
   const [replayPath, setReplayPath] = usePersistentState('canctl.tools.replayPath', '')
   const [dbcPath, setDbcPath] = usePersistentState('canctl.tools.dbcPath', '')
 
+  // 파일 다이얼로그는 Electron(preload)에서만 제공 — 일반 브라우저면 버튼 숨김
+  const canPick = typeof window !== 'undefined' && !!window.canctl?.pickOpenFile
+
+  const LOG_FILTERS = [{ name: '로그(JSONL)', extensions: ['jsonl', 'log'] }]
+  const DBC_FILTERS = [{ name: 'DBC', extensions: ['dbc'] }]
+
   function applyFilter(e) {
     e.preventDefault()
     setFilterErr(null)
@@ -40,6 +46,19 @@ export default function ToolsPanel({ filterIds, logStatus, onSetFilter, onStartL
       return
     }
     onSetFilter(ids)
+  }
+
+  async function browseLog() {
+    const p = await window.canctl?.pickSaveFile?.({ filters: LOG_FILTERS })
+    if (p) setLogPath(p)
+  }
+  async function browseReplay() {
+    const p = await window.canctl?.pickOpenFile?.({ filters: LOG_FILTERS })
+    if (p) setReplayPath(p)
+  }
+  async function browseDbc() {
+    const p = await window.canctl?.pickOpenFile?.({ filters: DBC_FILTERS })
+    if (p) setDbcPath(p)
   }
 
   const logging = !!logStatus?.logging
@@ -81,10 +100,15 @@ export default function ToolsPanel({ filterIds, logStatus, onSetFilter, onStartL
           <input
             value={logPath}
             onChange={(e) => setLogPath(e.target.value)}
-            placeholder="C:\\logs\\can.log"
+            placeholder="C:\\logs\\can.jsonl"
             disabled={logging}
           />
         </label>
+        {canPick && (
+          <button type="button" onClick={browseLog} disabled={logging}>
+            찾아보기
+          </button>
+        )}
         {logging ? (
           <button className="btn-danger" onClick={onStopLog}>
             로깅 중지
@@ -111,9 +135,14 @@ export default function ToolsPanel({ filterIds, logStatus, onSetFilter, onStartL
           <input
             value={replayPath}
             onChange={(e) => setReplayPath(e.target.value)}
-            placeholder="C:\\logs\\can.log"
+            placeholder="C:\\logs\\can.jsonl"
           />
         </label>
+        {canPick && (
+          <button type="button" onClick={browseReplay}>
+            찾아보기
+          </button>
+        )}
         <button onClick={() => onReplay(replayPath)} disabled={replayPath.trim() === ''}>
           재생
         </button>
@@ -129,6 +158,11 @@ export default function ToolsPanel({ filterIds, logStatus, onSetFilter, onStartL
             placeholder="C:\\dbc\\vehicle.dbc"
           />
         </label>
+        {canPick && (
+          <button type="button" onClick={browseDbc}>
+            찾아보기
+          </button>
+        )}
         <button onClick={() => onLoadDbc(dbcPath)} disabled={dbcPath.trim() === ''}>
           DBC 로드
         </button>
