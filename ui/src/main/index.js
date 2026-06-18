@@ -8,27 +8,36 @@ let mainWindow = null
 
 /**
  * Python 코어를 사이드카로 기동한다.
- * 개발 모드: core/.venv 의 python 으로 mock 백엔드 실행.
- * 패키징 모드: PyInstaller 바이너리 실행(추후 구현).
+ * 개발 모드: core/.venv 의 python 으로 `-m canctl_core` 실행.
+ * 패키징 모드: extraResources 로 동봉된 PyInstaller 단일 바이너리(resources/core/) 실행.
+ * CANCTL_REAL 환경변수가 설정되면 실장비(canalystii), 아니면 mock.
  */
 function startCore() {
-  if (app.isPackaged) {
-    console.warn('[core] 패키징된 코어 실행은 추후 구현됩니다')
-    return
-  }
-  const python =
-    process.platform === 'win32'
-      ? join(__dirname, '../../../core/.venv/Scripts/python.exe')
-      : join(__dirname, '../../../core/.venv/bin/python')
-  const cwd = join(__dirname, '../../../core')
-
-  // CANCTL_REAL 환경변수가 설정되면 실장비(canalystii) 모드, 아니면 mock (소스 편집 불필요)
   const useMock = !process.env.CANCTL_REAL
-  const args = ['-m', 'canctl_core', '--port', String(CORE_PORT)]
-  if (useMock) args.push('--mock')
+  const coreArgs = ['--port', String(CORE_PORT)]
+  if (useMock) coreArgs.push('--mock')
   console.log(`[core] 기동 모드: ${useMock ? 'mock' : '실장비(canalystii)'}`)
 
-  coreProc = spawn(python, args, {
+  let command
+  let args
+  let cwd
+  if (app.isPackaged) {
+    // 패키징: resources/core/ 에 동봉된 PyInstaller 바이너리
+    const exe = process.platform === 'win32' ? 'canctl-core.exe' : 'canctl-core'
+    cwd = join(process.resourcesPath, 'core')
+    command = join(cwd, exe)
+    args = coreArgs
+  } else {
+    // 개발: venv python 으로 -m canctl_core 실행
+    command =
+      process.platform === 'win32'
+        ? join(__dirname, '../../../core/.venv/Scripts/python.exe')
+        : join(__dirname, '../../../core/.venv/bin/python')
+    cwd = join(__dirname, '../../../core')
+    args = ['-m', 'canctl_core', ...coreArgs]
+  }
+
+  coreProc = spawn(command, args, {
     cwd,
     stdio: 'inherit',
     // 코어 한글 로그가 콘솔에서 깨지지 않도록 UTF-8 강제

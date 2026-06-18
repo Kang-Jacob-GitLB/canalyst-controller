@@ -1,0 +1,45 @@
+# electron-builder 패키징 설정
+# 기준 디렉토리: 이 파일이 있는 ui/ (package.json 위치)
+appId: com.litbig.canalyst-controller
+productName: CANalyst-II Controller
+
+directories:
+  # 패키징 산출물(설치본/portable)이 떨어지는 위치
+  output: dist
+
+# 앱에 동봉할 파일: electron-vite 산출물(out/) + 런타임 메타데이터
+files:
+  - out/**/*
+  - package.json
+
+# 추가 리소스: PyInstaller 가 생성할 코어 바이너리를 앱 resources/core/ 로 동봉.
+# from 은 ui/ 기준 상대경로(=canalyst-controller/core/dist), to 는 resources 하위 경로.
+# extraResources 는 항상 asar 바깥(resources/)에 위치하므로 사이드카 spawn 이 가능하다.
+# 주의: core/dist 는 PyInstaller 빌드 후 생성됨(아직 없음 — 설정만).
+#       이 매핑은 PyInstaller --onefile(dist 루트에 canctl-core[.exe] 직접 생성) 가정.
+#       --onedir 모드면 dist/canctl-core/ 트리째 복사되어 경로 규약이 달라진다.
+extraResources:
+  - from: ../core/dist
+    to: core
+
+# Windows: NSIS 설치본 + portable 동시 생성
+win:
+  target:
+    - nsis
+    - portable
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+
+# macOS: dmg (호스트가 mac 일 때만 빌드됨)
+mac:
+  target:
+    - dmg
+  category: public.app-category.developer-tools
+
+# Linux: AppImage (호스트가 linux 일 때만 빌드됨)
+linux:
+  target:
+    - AppImage
+  category: Development
