@@ -101,12 +101,38 @@ CANCTL_REAL=1 npm run dev
 | C→S | `{type:"connect", device_index, channel, bitrate}` | 연결 |
 | C→S | `{type:"disconnect"}` | 해제 |
 | C→S | `{type:"send", channel, can_id, extended, rtr, data:[..]}` | 프레임 송신 |
+| C→S | `{type:"set_filter", ids:[..]}` | 수신 ID 필터(빈 배열=전체 통과) |
+| C→S | `{type:"start_log", path}` / `{type:"stop_log"}` | JSONL 프레임 로깅 시작/종료 |
+| C→S | `{type:"replay", path}` | 기록 파일을 rx 스트림으로 재생 |
+| C→S | `{type:"load_dbc", path}` | DBC 로드(cantools, rx에 신호 디코딩 부착) |
 | S→C | `{type:"devices", list:[{index,name,channels}]}` | 장치 목록 |
 | S→C | `{type:"status", connected, backend, device, channels}` | 상태 |
-| S→C | `{type:"rx", frames:[{ts,channel,can_id,extended,rtr,dlc,data}]}` | 수신(배칭) |
+| S→C | `{type:"rx", frames:[{ts,channel,can_id,extended,rtr,dlc,data,decoded?}]}` | 수신(배칭, DBC 로드 시 `decoded` 부착) |
+| S→C | `{type:"log_status", logging, path}` / `{type:"filter", ids}` | 로깅/필터 상태 통지 |
 | S→C | `{type:"error", message}` | 오류 |
 
 - `bitrate` 는 정수(10000~1000000 표준값 권장). UI는 드롭다운으로 입력합니다.
+- 필터·로깅·replay 는 서버 레벨에서 동작하고, `load_dbc` 는 cantools(의존성 포함)로 CAN 신호를 디코딩합니다.
+
+## 빌드 / 배포 패키징
+
+설치 가능한 앱으로 만들려면 코어를 PyInstaller 단일 바이너리로 빌드한 뒤 electron-builder 로 묶습니다.
+
+```bash
+# 1) 코어 바이너리 (PyInstaller는 크로스 컴파일 불가 → 각 OS에서 각각 빌드)
+cd core
+pyinstaller --onefile --name canctl-core --noconfirm \
+  --collect-all canalystii --collect-all libusb_package --collect-all cantools \
+  --collect-submodules can --collect-submodules canctl_core pyinstaller_entry.py
+
+# 2) Electron 앱 패키징 (코어 바이너리를 resources/core/ 로 동봉)
+cd ../ui
+npm run dist
+```
+
+`ui/electron-builder.yml` 의 `extraResources` 가 `core/dist` 를 앱의 `resources/core/` 로 복사하고,
+패키징된 앱의 main 프로세스는 `process.resourcesPath/core/canctl-core(.exe)` 를 사이드카로 실행합니다.
+자세한 절차는 `scripts/build-core.md` 참고.
 
 ## 한계
 
