@@ -13,10 +13,11 @@ let mainWindow = null
  * CANCTL_REAL 환경변수가 설정되면 실장비(canalystii), 아니면 mock.
  */
 function startCore() {
-  const useMock = !process.env.CANCTL_REAL
+  // 기본은 실장비(canalystii) 모드. 장비 없이 데모를 보려면 CANCTL_MOCK 설정.
+  const useMock = !!process.env.CANCTL_MOCK
   const coreArgs = ['--port', String(CORE_PORT)]
   if (useMock) coreArgs.push('--mock')
-  console.log(`[core] 기동 모드: ${useMock ? 'mock' : '실장비(canalystii)'}`)
+  console.log(`[core] 기동 모드: ${useMock ? 'mock(데모)' : '실장비(canalystii)'}`)
 
   let command
   let args
