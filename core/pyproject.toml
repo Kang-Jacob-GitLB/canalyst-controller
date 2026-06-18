@@ -7,6 +7,7 @@ dependencies = [
     "python-can[canalystii]>=4.3",
     "websockets>=12.0",
     "libusb-package>=1.0",
+    "cantools>=39",
 ]
 
 [project.optional-dependencies]
