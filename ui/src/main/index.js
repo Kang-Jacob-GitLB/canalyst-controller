@@ -22,16 +22,18 @@ function startCore() {
       : join(__dirname, '../../../core/.venv/bin/python')
   const cwd = join(__dirname, '../../../core')
 
-  coreProc = spawn(
-    python,
-    ['-m', 'canctl_core', '--mock', '--port', String(CORE_PORT)],
-    {
-      cwd,
-      stdio: 'inherit',
-      // 코어 한글 로그가 콘솔에서 깨지지 않도록 UTF-8 강제
-      env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' }
-    }
-  )
+  // CANCTL_REAL 환경변수가 설정되면 실장비(canalystii) 모드, 아니면 mock (소스 편집 불필요)
+  const useMock = !process.env.CANCTL_REAL
+  const args = ['-m', 'canctl_core', '--port', String(CORE_PORT)]
+  if (useMock) args.push('--mock')
+  console.log(`[core] 기동 모드: ${useMock ? 'mock' : '실장비(canalystii)'}`)
+
+  coreProc = spawn(python, args, {
+    cwd,
+    stdio: 'inherit',
+    // 코어 한글 로그가 콘솔에서 깨지지 않도록 UTF-8 강제
+    env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' }
+  })
   coreProc.on('error', (err) => console.error('[core] spawn 실패:', err))
   coreProc.on('exit', (code) => {
     console.log('[core] 종료 코드:', code)

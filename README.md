@@ -82,8 +82,16 @@ core\.venv\Scripts\python scripts\smoke_device.py --channel 0 --bitrate 500000
 
 ### 3) UI에서 실장비 사용
 
-현재 UI는 개발 편의를 위해 코어를 `--mock` 으로 띄웁니다. 실장비를 쓰려면
-`ui/src/main/index.js` 의 사이드카 인자에서 `--mock` 을 제거하세요(추후 UI 토글로 전환 예정).
+기본은 mock 모드입니다. 실장비로 띄우려면 `CANCTL_REAL` 환경변수를 설정하세요(소스 편집 불필요):
+
+```bash
+# Windows (PowerShell)
+$env:CANCTL_REAL=1; npm run dev
+# macOS/Linux
+CANCTL_REAL=1 npm run dev
+```
+
+(향후 UI 내 토글 버튼으로 전환 예정)
 
 ## WebSocket 프로토콜 (JSON, 한 줄 = 한 메시지)
 
