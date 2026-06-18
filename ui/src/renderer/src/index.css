@@ -2,19 +2,212 @@
   color-scheme: dark;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: #1e1e1e;
   color: #e0e0e0;
+  font-size: 14px;
 }
 
 .app {
-  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 16px;
+  gap: 12px;
 }
 
-h1 {
-  font-size: 1.4rem;
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-header h1 {
+  font-size: 1.3rem;
+  margin: 0;
+}
+
+/* 상태 배지 */
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+.status-badge .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.status-badge .device-state {
+  color: #aaa;
+}
+
+/* 연결 바 */
+.connection-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px;
+  background: #252526;
+  border-radius: 6px;
+}
+.connection-bar label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: #aaa;
+}
+.connection-bar select {
+  min-width: 120px;
+}
+
+select,
+input,
+button {
+  background: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: #0e639c;
+  border-color: #0e639c;
+}
+.btn-danger {
+  background: #a1260d;
+  border-color: #a1260d;
+}
+
+.app-error {
+  margin: 0;
+  padding: 8px 12px;
+  background: #5a1d1d;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* 메인 그리드: RX 모니터 + TX 패널 */
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.panel-header h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* RX 모니터 */
+.rx-monitor {
+  display: flex;
+  flex-direction: column;
+  background: #252526;
+  border-radius: 6px;
+  padding: 12px;
+  min-height: 0;
+}
+.rx-table-wrap {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.rx-monitor table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.rx-monitor th,
+.rx-monitor td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid #333;
+  white-space: nowrap;
+}
+.rx-monitor thead th {
+  position: sticky;
+  top: 0;
+  background: #2d2d2d;
+  font-size: 0.8rem;
+  color: #aaa;
+}
+.rx-monitor td.empty {
+  color: #777;
+  text-align: center;
+  padding: 24px;
+}
+.mono {
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* TX 패널 */
+.tx-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #252526;
+  border-radius: 6px;
+  padding: 12px;
+}
+.tx-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tx-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: #aaa;
+}
+.tx-panel label.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+.tx-panel label.grow {
+  flex: 1;
+}
+.tx-panel label.grow input {
+  width: 100%;
+}
+.tx-err {
+  margin: 0;
+  color: #f48771;
+  font-size: 0.85rem;
+}
+.tx-hint {
+  margin: 0;
+  color: #888;
+  font-size: 0.85rem;
 }
 
 code {
