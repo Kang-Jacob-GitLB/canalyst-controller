@@ -1,0 +1,23 @@
+[project]
+name = "canctl-core"
+version = "0.1.0"
+description = "CANalyst-II 제어 코어: CAN 송수신 + 로컬 WebSocket 서버"
+requires-python = ">=3.10"
+dependencies = [
+    "python-can[canalystii]>=4.3",
+    "websockets>=12.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["canctl_core*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
