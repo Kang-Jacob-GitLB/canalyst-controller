@@ -25,7 +25,12 @@ function startCore() {
   coreProc = spawn(
     python,
     ['-m', 'canctl_core', '--mock', '--port', String(CORE_PORT)],
-    { cwd, stdio: 'inherit' }
+    {
+      cwd,
+      stdio: 'inherit',
+      // 코어 한글 로그가 콘솔에서 깨지지 않도록 UTF-8 강제
+      env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' }
+    }
   )
   coreProc.on('error', (err) => console.error('[core] spawn 실패:', err))
   coreProc.on('exit', (code) => {
