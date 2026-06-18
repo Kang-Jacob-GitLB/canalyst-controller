@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { usePersistentState } from '../hooks/usePersistentState'
 
 // 표준 비트레이트(canalystii 는 임의값도 받지만 표준값 권장 → 드롭다운 고정)
 const BITRATES = [10000, 20000, 50000, 100000, 125000, 250000, 500000, 800000, 1000000]
 
 export default function ConnectionBar({ devices, status, onConnect, onDisconnect, onRefresh }) {
-  const [deviceIndex, setDeviceIndex] = useState(0)
-  const [channel, setChannel] = useState(0)
-  const [bitrate, setBitrate] = useState(500000)
+  const [deviceIndex, setDeviceIndex] = usePersistentState('canctl.conn.deviceIndex', 0)
+  const [channel, setChannel] = usePersistentState('canctl.conn.channel', 0)
+  const [bitrate, setBitrate] = usePersistentState('canctl.conn.bitrate', 500000)
   const connected = !!status?.connected
 
   return (

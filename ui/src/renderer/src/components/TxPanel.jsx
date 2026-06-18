@@ -1,13 +1,14 @@
 import { useState } from 'react'
+import { usePersistentState } from '../hooks/usePersistentState'
 
 export default function TxPanel({ status, onSend }) {
-  const [canId, setCanId] = useState('123')
-  const [channel, setChannel] = useState(0)
-  const [extended, setExtended] = useState(false)
-  const [rtr, setRtr] = useState(false)
-  const [dataStr, setDataStr] = useState('11 22 33')
+  const [canId, setCanId] = usePersistentState('canctl.tx.canId', '123')
+  const [channel, setChannel] = usePersistentState('canctl.tx.channel', 0)
+  const [extended, setExtended] = usePersistentState('canctl.tx.extended', false)
+  const [rtr, setRtr] = usePersistentState('canctl.tx.rtr', false)
+  const [dataStr, setDataStr] = usePersistentState('canctl.tx.dataStr', '11 22 33')
   const [err, setErr] = useState(null)
-  const [sent, setSent] = useState(null) // 마지막 송신 피드백
+  const [sent, setSent] = useState(null) // 마지막 송신 피드백(일시적)
   const connected = !!status?.connected
 
   function submit(e) {

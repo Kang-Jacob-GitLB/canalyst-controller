@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { usePersistentState } from '../hooks/usePersistentState'
 
 // 허용 CAN ID 입력 문자열("100, 200, 7FF")을 정수 배열로 파싱한다.
 // 빈 입력/공백만이면 빈 배열(전체 통과). 잘못된 토큰이 있으면 { error } 반환.
@@ -24,11 +25,11 @@ function fmtFilterIds(ids) {
 }
 
 export default function ToolsPanel({ filterIds, logStatus, onSetFilter, onStartLog, onStopLog, onReplay, onLoadDbc }) {
-  const [filterStr, setFilterStr] = useState('')
+  const [filterStr, setFilterStr] = usePersistentState('canctl.tools.filterStr', '')
   const [filterErr, setFilterErr] = useState(null)
-  const [logPath, setLogPath] = useState('')
-  const [replayPath, setReplayPath] = useState('')
-  const [dbcPath, setDbcPath] = useState('')
+  const [logPath, setLogPath] = usePersistentState('canctl.tools.logPath', '')
+  const [replayPath, setReplayPath] = usePersistentState('canctl.tools.replayPath', '')
+  const [dbcPath, setDbcPath] = usePersistentState('canctl.tools.dbcPath', '')
 
   function applyFilter(e) {
     e.preventDefault()
