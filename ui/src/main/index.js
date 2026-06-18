@@ -10,7 +10,7 @@ let mainWindow = null
  * Python 코어를 사이드카로 기동한다.
  * 개발 모드: core/.venv 의 python 으로 `-m canctl_core` 실행.
  * 패키징 모드: extraResources 로 동봉된 PyInstaller 단일 바이너리(resources/core/) 실행.
- * CANCTL_REAL 환경변수가 설정되면 실장비(canalystii), 아니면 mock.
+ * 기본은 실장비(canalystii). CANCTL_MOCK 환경변수가 설정되면 데모(mock) 모드.
  */
 function startCore() {
   // 기본은 실장비(canalystii) 모드. 장비 없이 데모를 보려면 CANCTL_MOCK 설정.
