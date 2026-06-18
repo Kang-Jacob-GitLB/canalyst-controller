@@ -11,8 +11,8 @@ const frame = (over = {}) => ({
 describe('RxMonitor', () => {
   it('빈 상태 메시지를 표시한다', () => {
     render(<RxMonitor frames={[]} onClear={() => {}} />)
-    expect(screen.getByText(/수신된 프레임이 없습니다/)).toBeInTheDocument()
-    expect(screen.getByText(/수신 모니터 \(0\)/)).toBeInTheDocument()
+    expect(screen.getByText(/송수신된 프레임이 없습니다/)).toBeInTheDocument()
+    expect(screen.getByText(/송수신 모니터 \(0\)/)).toBeInTheDocument()
   })
 
   it('프레임 행을 렌더하고 ID·데이터를 16진수로 포맷한다', () => {
@@ -20,7 +20,7 @@ describe('RxMonitor', () => {
     expect(screen.getByText('0x100')).toBeInTheDocument()
     expect(screen.getByText('AB CD')).toBeInTheDocument()
     expect(screen.getByText('STD')).toBeInTheDocument()
-    expect(screen.getByText(/수신 모니터 \(1\)/)).toBeInTheDocument()
+    expect(screen.getByText(/송수신 모니터 \(1\)/)).toBeInTheDocument()
   })
 
   it('확장 프레임은 8자리 ID와 EXT로 표시한다', () => {
@@ -81,5 +81,17 @@ describe('RxMonitor', () => {
   it('decoded 가 없으면 디코딩 서브행을 렌더하지 않는다', () => {
     render(<RxMonitor frames={[frame()]} onClear={() => {}} />)
     expect(document.querySelector('.decoded-row')).toBeNull()
+  })
+
+  it('방향(dir)에 따라 RX/TX 배지를 표시한다', () => {
+    render(
+      <RxMonitor
+        frames={[frame({ _seq: 1, can_id: 0x111 }), frame({ _seq: 2, can_id: 0x123, dir: 'tx' })]}
+        onClear={() => {}}
+      />
+    )
+    expect(screen.getByText('TX')).toBeInTheDocument()
+    expect(screen.getByText('RX')).toBeInTheDocument()
+    expect(document.querySelector('tr.frame-tx')).not.toBeNull()
   })
 })

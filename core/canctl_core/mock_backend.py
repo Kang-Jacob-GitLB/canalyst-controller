@@ -1,7 +1,7 @@
 """장비 없이 동작하는 mock CAN 백엔드.
 
-연결되면 몇 개의 가상 CAN 메시지를 주기적으로 생성하고,
-send() 한 프레임은 echo 하여 RX 스트림에 반영한다(UI 송신 확인용).
+연결되면 몇 개의 가상 CAN 메시지를 주기적으로 생성한다.
+송신(TX) 표시는 서버가 tx 로 echo 하므로 send() 는 연결 여부만 확인한다.
 """
 from __future__ import annotations
 
@@ -40,7 +40,6 @@ class MockBackend(CanBackend):
         self._connected = False
         self._channel = 0
         self._sources: list[_PeriodicSource] = []
-        self._echo: list[CanFrame] = []
 
     @property
     def connected(self) -> bool:
@@ -66,17 +65,12 @@ class MockBackend(CanBackend):
     def disconnect(self) -> None:
         self._connected = False
         self._sources = []
-        self._echo.clear()
 
     def send(self, channel: int, can_id: int, extended: bool,
              rtr: bool, data: list[int]) -> None:
+        # 송신 표시는 서버가 tx 로 echo 한다. 여기선 연결 여부만 확인.
         if not self._connected:
             raise RuntimeError("연결되지 않았습니다")
-        # 송신 프레임을 echo 하여 다음 poll() 의 RX 스트림에 포함
-        self._echo.append(CanFrame(
-            ts=time.time(), channel=channel, can_id=can_id,
-            extended=extended, rtr=rtr, dlc=len(data), data=list(data),
-        ))
 
     def poll(self) -> list[CanFrame]:
         if not self._connected:
@@ -89,7 +83,4 @@ class MockBackend(CanBackend):
                     ts=now, channel=self._channel, can_id=can_id,
                     extended=False, rtr=False, dlc=len(data), data=data,
                 ))
-        if self._echo:
-            frames.extend(self._echo)
-            self._echo = []
         return frames

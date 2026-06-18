@@ -27,6 +27,7 @@ class CanFrame:
     rtr: bool
     dlc: int
     data: list[int]
+    dir: str = "rx"  # "rx" 수신 / "tx" 송신
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -37,6 +38,7 @@ class CanFrame:
             "rtr": self.rtr,
             "dlc": self.dlc,
             "data": list(self.data),
+            "dir": self.dir,
         }
 
 

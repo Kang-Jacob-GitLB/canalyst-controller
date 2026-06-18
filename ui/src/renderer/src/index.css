@@ -271,6 +271,31 @@ button:disabled {
   color: #888;
   font-size: 0.85rem;
 }
+.tx-sent {
+  margin: 0;
+  color: #6ac46a;
+  font-size: 0.85rem;
+}
+
+/* 송수신 방향 배지 */
+.dir-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.dir-rx {
+  background: #0e4a73;
+  color: #cce6ff;
+}
+.dir-tx {
+  background: #6a4a00;
+  color: #ffd479;
+}
+.rx-monitor tr.frame-tx td {
+  background: rgba(255, 180, 0, 0.06);
+}
 
 code {
   background: #2d2d2d;

@@ -7,13 +7,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 
 import websockets
 
 from . import protocol
 from .backend import CanBackend
 from .dbc import DbcDecoder, DbcUnavailable
-from .protocol import ProtocolError
+from .protocol import CanFrame, ProtocolError
 from .recorder import FrameRecorder, read_frames
 
 log = logging.getLogger("canctl_core.server")
@@ -91,6 +92,13 @@ class CanServer:
             elif cmd == "send":
                 self._backend.send(msg["channel"], msg["can_id"],
                                    msg["extended"], msg["rtr"], msg["data"])
+                # 송신 프레임을 tx 로 모니터에 echo(필터 무관, 항상 표시)
+                tx = CanFrame(
+                    ts=time.time(), channel=msg["channel"], can_id=msg["can_id"],
+                    extended=msg["extended"], rtr=msg["rtr"],
+                    dlc=len(msg["data"]), data=list(msg["data"]), dir="tx",
+                )
+                await self._broadcast(protocol.make_rx([tx], decoder=self._decoder))
             elif cmd == "set_filter":
                 self._filter_ids = set(msg["ids"])
                 await self._broadcast(protocol.make_filter(sorted(self._filter_ids)))

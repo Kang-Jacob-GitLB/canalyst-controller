@@ -221,3 +221,19 @@ def test_load_dbc_unavailable_sends_error(monkeypatch):
     asyncio.run(srv._handle_command(ws, '{"type":"load_dbc","path":"x.dbc"}'))
     assert any(m["type"] == "error" and "cantools" in m["message"] for m in ws.sent)
     assert srv._decoder.loaded is False
+
+
+# --- send: 송신 프레임을 tx 로 모니터에 echo ---
+
+def test_handle_send_echoes_tx_frame():
+    srv = CanServer(FakeBackend())
+    ws = FakeWs()
+    srv._clients.add(ws)
+    srv._backend.connect(0, 0, 500000)
+    asyncio.run(srv._handle_command(ws, '{"type":"send","channel":0,"can_id":291,"data":[1,2,3]}'))
+    rx = [m for m in ws.sent if m["type"] == "rx"]
+    assert len(rx) == 1
+    frame = rx[0]["frames"][0]
+    assert frame["can_id"] == 291
+    assert frame["dir"] == "tx"
+    assert frame["data"] == [1, 2, 3]

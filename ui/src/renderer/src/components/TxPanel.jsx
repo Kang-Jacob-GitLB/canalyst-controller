@@ -7,6 +7,7 @@ export default function TxPanel({ status, onSend }) {
   const [rtr, setRtr] = useState(false)
   const [dataStr, setDataStr] = useState('11 22 33')
   const [err, setErr] = useState(null)
+  const [sent, setSent] = useState(null) // 마지막 송신 피드백
   const connected = !!status?.connected
 
   function submit(e) {
@@ -31,6 +32,8 @@ export default function TxPanel({ status, onSend }) {
     }
 
     onSend({ channel, can_id: id, extended, rtr, data: rtr ? [] : bytes })
+    // 송신 피드백(전송 요청됨 — 송신 결과는 송수신 모니터의 TX 행으로 확인)
+    setSent({ id: '0x' + id.toString(16).toUpperCase(), at: new Date().toLocaleTimeString() })
   }
 
   return (
@@ -77,6 +80,9 @@ export default function TxPanel({ status, onSend }) {
       </div>
 
       {err && <p className="tx-err">{err}</p>}
+      {sent && !err && (
+        <p className="tx-sent">송신됨: {sent.id} @ {sent.at} (송수신 모니터의 TX 행으로 확인)</p>
+      )}
       {!connected && <p className="tx-hint">연결 후 송신할 수 있습니다.</p>}
     </form>
   )

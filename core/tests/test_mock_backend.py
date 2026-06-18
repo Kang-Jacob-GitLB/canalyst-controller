@@ -38,16 +38,14 @@ def test_connect_generates_frames(monkeypatch):
     assert len(frames) >= 3
 
 
-def test_send_echo(monkeypatch):
+def test_send_does_not_echo(monkeypatch):
     clock = FakeClock()
     monkeypatch.setattr(mb.time, "time", clock.time)
     backend = MockBackend()
     backend.connect(0, 0, 500000)
     backend.send(0, 0x123, False, False, [1, 2, 3])
-    echo = [f for f in backend.poll() if f.can_id == 0x123]
-    assert len(echo) == 1
-    assert echo[0].data == [1, 2, 3]
-    assert echo[0].dlc == 3
+    # mock 은 더 이상 echo 하지 않는다(TX 표시는 서버가 tx 로 담당)
+    assert all(f.can_id != 0x123 for f in backend.poll())
 
 
 def test_disconnect_clears(monkeypatch):

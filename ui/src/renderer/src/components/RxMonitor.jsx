@@ -15,7 +15,7 @@ function fmtSignals(signals) {
     .join(', ')
 }
 
-// 첫 수신 프레임(t0) 기준 상대 경과초로 표시한다.
+// 첫 프레임(t0) 기준 상대 경과초로 표시한다.
 // mock(거대한 epoch초)·실장비(작은 상대초) 모두 같은 형식으로 보이게 한다.
 // 1분 미만은 +0.000 식, 그 이상은 분:초.밀리초(m:ss.mmm)로 표시.
 function fmtElapsed(ts, t0) {
@@ -42,7 +42,7 @@ export default function RxMonitor({ frames, onClear }) {
   return (
     <section className="rx-monitor">
       <div className="panel-header">
-        <h2>수신 모니터 ({frames.length})</h2>
+        <h2>송수신 모니터 ({frames.length})</h2>
         <button onClick={onClear}>지우기</button>
       </div>
       <div className="rx-table-wrap">
@@ -50,6 +50,7 @@ export default function RxMonitor({ frames, onClear }) {
           <thead>
             <tr>
               <th>경과(s)</th>
+              <th>방향</th>
               <th>CH</th>
               <th>ID</th>
               <th>형식</th>
@@ -60,35 +61,41 @@ export default function RxMonitor({ frames, onClear }) {
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="empty">
-                  수신된 프레임이 없습니다. 연결 후 트래픽을 기다리세요.
+                <td colSpan={7} className="empty">
+                  아직 송수신된 프레임이 없습니다. 연결 후 송신하거나 트래픽을 기다리세요.
                 </td>
               </tr>
             )}
-            {rows.map((f) => (
-              <Fragment key={f._seq}>
-                <tr>
-                  <td className="mono">{fmtElapsed(f.ts, t0)}</td>
-                  <td>{f.channel}</td>
-                  <td className="mono">{fmtId(f.can_id, f.extended)}</td>
-                  <td>
-                    {f.extended ? 'EXT' : 'STD'}
-                    {f.rtr ? '/RTR' : ''}
-                  </td>
-                  <td>{f.dlc}</td>
-                  <td className="mono">{fmtData(f.data)}</td>
-                </tr>
-                {/* DBC 로드 시 디코딩된 메시지명·신호를 서브행으로 표시 */}
-                {f.decoded && (
-                  <tr className="decoded-row">
-                    <td colSpan={6}>
-                      <span className="decoded-msg">{f.decoded.message}</span>{' '}
-                      <span className="decoded-signals mono">{fmtSignals(f.decoded.signals)}</span>
+            {rows.map((f) => {
+              const dir = f.dir === 'tx' ? 'tx' : 'rx'
+              return (
+                <Fragment key={f._seq}>
+                  <tr className={`frame-${dir}`}>
+                    <td className="mono">{fmtElapsed(f.ts, t0)}</td>
+                    <td>
+                      <span className={`dir-badge dir-${dir}`}>{dir === 'tx' ? 'TX' : 'RX'}</span>
                     </td>
+                    <td>{f.channel}</td>
+                    <td className="mono">{fmtId(f.can_id, f.extended)}</td>
+                    <td>
+                      {f.extended ? 'EXT' : 'STD'}
+                      {f.rtr ? '/RTR' : ''}
+                    </td>
+                    <td>{f.dlc}</td>
+                    <td className="mono">{fmtData(f.data)}</td>
                   </tr>
-                )}
-              </Fragment>
-            ))}
+                  {/* DBC 로드 시 디코딩된 메시지명·신호를 서브행으로 표시 */}
+                  {f.decoded && (
+                    <tr className="decoded-row">
+                      <td colSpan={7}>
+                        <span className="decoded-msg">{f.decoded.message}</span>{' '}
+                        <span className="decoded-signals mono">{fmtSignals(f.decoded.signals)}</span>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              )
+            })}
           </tbody>
         </table>
       </div>

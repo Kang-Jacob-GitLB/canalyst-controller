@@ -29,4 +29,10 @@ describe('TxPanel', () => {
     expect(onSend).not.toHaveBeenCalled()
     expect(screen.getByText(/16진수/)).toBeInTheDocument()
   })
+
+  it('송신 후 송신 피드백(송신됨: ...)을 표시한다', async () => {
+    render(<TxPanel status={{ connected: true }} onSend={() => {}} />)
+    await userEvent.setup().click(screen.getByText('송신'))
+    expect(screen.getByText(/송신됨: 0x123/)).toBeInTheDocument()
+  })
 })
