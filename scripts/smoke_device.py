@@ -46,7 +46,7 @@ def main() -> int:
 
     print(f"TOTAL_FRAMES={total}")
     if total == 0:
-        print("경고: 프레임 0개 — 버스 트래픽이 없거나 비트레이트 불일치일 수 있습니다.")
+        print("경고: 프레임 0개 - 버스 트래픽이 없거나 비트레이트 불일치일 수 있습니다.")
     return 0
 
 

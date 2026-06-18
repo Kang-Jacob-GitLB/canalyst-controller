@@ -14,6 +14,24 @@ from .protocol import CanFrame
 
 log = logging.getLogger("canctl_core.canalystii")
 
+
+def _ensure_usb_backend() -> None:
+    """python-can/canalystii 가 libusb_package 번들 libusb-1.0 백엔드를 쓰도록 보장한다.
+
+    Windows 에 시스템 libusb-1.0.dll 이 없을 때 발생하는
+    'No backend available'(usb.core.NoBackendError)을 방지한다.
+    """
+    try:
+        import libusb_package
+        import usb.backend.libusb1
+
+        backend = libusb_package.get_libusb1_backend()
+        if backend is not None:
+            usb.backend.libusb1.get_backend = lambda find_library=None: backend
+    except Exception as exc:  # libusb_package 미설치 등 — pyusb 기본 탐색에 맡김
+        log.debug("libusb 백엔드 주입 실패(기본 탐색 사용): %s", exc)
+
+
 # UI 드롭다운과 일치시킬 표준 비트레이트(드라이버는 임의값도 받지만 표준값 권장)
 SUPPORTED_BITRATES = [10000, 20000, 50000, 100000, 125000,
                       250000, 500000, 800000, 1000000]
@@ -41,6 +59,7 @@ class CanalystIIBackend(CanBackend):
     def connect(self, device_index: int, channel: int, bitrate: int) -> None:
         if self._bus is not None:
             self.disconnect()
+        _ensure_usb_backend()  # Windows libusb 백엔드 보장
         import can  # 지연 import (실장비 미사용 시 로드 부담 제거)
 
         self._channel = channel

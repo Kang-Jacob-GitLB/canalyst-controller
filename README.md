@@ -118,8 +118,9 @@ CANCTL_REAL=1 npm run dev
 
 - **`Error: Electron uninstall`**: Electron 바이너리 미설치 → `node ui/node_modules/electron/install.js` 실행.
 - **`npm ERESOLVE` (vite/plugin-react)**: `electron-vite@5` 는 vite 7까지 지원 → `vite@7` + `@vitejs/plugin-react@5` 로 맞춥니다.
-- **실장비 연결 실패/장치 없음**: Windows는 Zadig WinUSB 설정 확인. 다른 프로그램(ZCANPRO 등)이 장치를 점유 중인지 확인.
-- **수신 프레임 0개**: 비트레이트가 실제 버스와 일치하는지, 버스에 트래픽이 있는지 확인.
+- **`No backend available` (usb.core.NoBackendError)**: pyusb 의 libusb-1.0 백엔드 부재. `libusb-package` 가 의존성에 포함되어 `pip install -e .` 시 자동 설치되고, 코어가 번들 백엔드를 자동 주입하므로 별도 DLL 설치가 필요 없습니다.
+- **실장비 연결 실패/접근 거부**: 다른 프로그램(ZCANPRO 등)이 장치를 점유 중인지 확인. 접근이 거부되면 Zadig 로 WinUSB 드라이버를 설정하세요.
+- **연결은 되는데 수신 프레임 0개**: 비트레이트가 실제 버스와 일치하는지, 버스에 트래픽이 흐르는지 확인하세요.
 
 ## 라이선스 / 출처
 
