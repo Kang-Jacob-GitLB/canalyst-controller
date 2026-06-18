@@ -35,4 +35,39 @@ describe('RxMonitor', () => {
     await userEvent.setup().click(screen.getByText('지우기'))
     expect(onClear).toHaveBeenCalled()
   })
+
+  it('첫 프레임 기준 상대 경과초로 ts 를 표시한다(거대한 mock epoch도 작게)', () => {
+    // mock 백엔드의 거대한 epoch초(약 1.75e9)도 t0 를 빼면 작은 상대값이 된다.
+    const t0 = 1_750_000_000.0
+    render(
+      <RxMonitor
+        frames={[
+          frame({ _seq: 1, ts: t0 }),
+          frame({ _seq: 2, ts: t0 + 0.102 })
+        ]}
+        onClear={() => {}}
+      />
+    )
+    // 거대한 raw epoch 숫자는 화면에 나타나지 않는다
+    expect(screen.queryByText(String(t0))).not.toBeInTheDocument()
+    // 첫 프레임은 +0.000, 다음 프레임은 +0.102
+    expect(screen.getByText('+0.000')).toBeInTheDocument()
+    expect(screen.getByText('+0.102')).toBeInTheDocument()
+  })
+
+  it('500개 상한으로 첫 프레임이 밀려나도 t0 앵커가 흔들리지 않는다', () => {
+    const t0 = 1_750_000_000.0
+    const a = frame({ _seq: 1, ts: t0 })
+    const b = frame({ _seq: 2, ts: t0 + 0.102 })
+    const { rerender } = render(<RxMonitor frames={[a, b]} onClear={() => {}} />)
+
+    // 윈도우 슬라이드 모사: a 가 밀려나고 b, c 만 남음(c 는 t0+61 → m:ss 분기)
+    const c = frame({ _seq: 3, ts: t0 + 61 })
+    rerender(<RxMonitor frames={[b, c]} onClear={() => {}} />)
+
+    // t0 가 frames[0] 에서 재계산됐다면 b 가 +0.000 이 되어버린다 → 앵커 불변 확인
+    expect(screen.getByText('+0.102')).toBeInTheDocument()
+    // 60초 이상은 분:초.밀리초(m:ss.mmm) 분기로 표시
+    expect(screen.getByText('1:01.000')).toBeInTheDocument()
+  })
 })

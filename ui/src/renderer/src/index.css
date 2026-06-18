@@ -49,6 +49,15 @@ body {
 .status-badge .device-state {
   color: #aaa;
 }
+/* mock(데모) 모드 강조 배지 — 실장비와 한눈에 구분 */
+.status-badge .mock-badge {
+  background: #8a6d00;
+  color: #ffe27a;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
 
 /* 연결 바 */
 .connection-bar {

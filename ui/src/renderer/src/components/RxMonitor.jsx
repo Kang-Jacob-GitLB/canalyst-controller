@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+
 function fmtData(data) {
   return data.map((b) => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')
 }
@@ -6,7 +8,28 @@ function fmtId(id, extended) {
   return '0x' + id.toString(16).toUpperCase().padStart(extended ? 8 : 3, '0')
 }
 
+// 첫 수신 프레임(t0) 기준 상대 경과초로 표시한다.
+// mock(거대한 epoch초)·실장비(작은 상대초) 모두 같은 형식으로 보이게 한다.
+// 1분 미만은 +0.000 식, 그 이상은 분:초.밀리초(m:ss.mmm)로 표시.
+function fmtElapsed(ts, t0) {
+  const dt = ts - t0
+  if (dt < 60) return `+${dt.toFixed(3)}`
+  const m = Math.floor(dt / 60)
+  const s = dt - m * 60
+  return `${m}:${s.toFixed(3).padStart(6, '0')}`
+}
+
 export default function RxMonitor({ frames, onClear }) {
+  // 첫 프레임의 ts 를 한 번만 앵커링한다. 500개 상한으로 윈도우가 밀려도
+  // 기준점이 흔들리지 않도록 useRef 로 보관하고, 비워지면(지우기) 리셋한다.
+  const t0Ref = useRef(null)
+  if (frames.length === 0) {
+    t0Ref.current = null
+  } else if (t0Ref.current === null) {
+    t0Ref.current = frames[0].ts // frames[0] = 가장 오래된 프레임
+  }
+  const t0 = t0Ref.current
+
   const rows = frames.slice().reverse() // 최신이 위로
 
   return (
@@ -19,7 +42,7 @@ export default function RxMonitor({ frames, onClear }) {
         <table>
           <thead>
             <tr>
-              <th>시각(s)</th>
+              <th>경과(s)</th>
               <th>CH</th>
               <th>ID</th>
               <th>형식</th>
@@ -37,7 +60,7 @@ export default function RxMonitor({ frames, onClear }) {
             )}
             {rows.map((f) => (
               <tr key={f._seq}>
-                <td className="mono">{f.ts.toFixed(3)}</td>
+                <td className="mono">{fmtElapsed(f.ts, t0)}</td>
                 <td>{f.channel}</td>
                 <td className="mono">{fmtId(f.can_id, f.extended)}</td>
                 <td>
