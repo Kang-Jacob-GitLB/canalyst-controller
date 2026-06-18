@@ -149,4 +149,44 @@ describe('useCanSocket', () => {
     act(() => result.current.clearFrames())
     expect(result.current.frames).toHaveLength(0)
   })
+
+  it('필터/로깅/DBC 명령을 프로토콜 형식으로 전송한다', () => {
+    const { result } = renderHook(() => useCanSocket('ws://x'))
+    const ws = FakeWebSocket.last
+    act(() => ws._open()) // readyState = OPEN (sent[0]=list_devices)
+
+    act(() => result.current.setFilter([0x100, 0x7ff]))
+    act(() => result.current.startLog('C:\\logs\\can.log'))
+    act(() => result.current.stopLog())
+    act(() => result.current.replay('C:\\logs\\can.log'))
+    act(() => result.current.loadDbc('C:\\dbc\\vehicle.dbc'))
+
+    const sent = ws.sent.slice(1).map((s) => JSON.parse(s)) // 자동 list_devices 제외
+    expect(sent).toEqual([
+      { type: 'set_filter', ids: [0x100, 0x7ff] },
+      { type: 'start_log', path: 'C:\\logs\\can.log' },
+      { type: 'stop_log' },
+      { type: 'replay', path: 'C:\\logs\\can.log' },
+      { type: 'load_dbc', path: 'C:\\dbc\\vehicle.dbc' }
+    ])
+  })
+
+  it('filter·log_status 이벤트를 filterIds·logStatus 로 디스패치한다', () => {
+    const { result } = renderHook(() => useCanSocket('ws://x'))
+    const ws = FakeWebSocket.last
+    act(() => ws._open())
+
+    // 미통지 초기값은 null(전체통과 [] 와 구분)
+    expect(result.current.filterIds).toBeNull()
+    expect(result.current.logStatus).toBeNull()
+
+    act(() => ws._message({ type: 'filter', ids: [0x100, 0x200] }))
+    expect(result.current.filterIds).toEqual([0x100, 0x200])
+
+    act(() => ws._message({ type: 'filter', ids: [] }))
+    expect(result.current.filterIds).toEqual([]) // 전체통과
+
+    act(() => ws._message({ type: 'log_status', logging: true, path: '/tmp/a.log' }))
+    expect(result.current.logStatus).toEqual({ logging: true, path: '/tmp/a.log' })
+  })
 })

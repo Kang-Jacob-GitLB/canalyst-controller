@@ -1,6 +1,7 @@
 import { useCanSocket } from './hooks/useCanSocket'
 import StatusBadge from './components/StatusBadge'
 import ConnectionBar from './components/ConnectionBar'
+import ToolsPanel from './components/ToolsPanel'
 import RxMonitor from './components/RxMonitor'
 import TxPanel from './components/TxPanel'
 
@@ -12,12 +13,19 @@ export default function App() {
     devices,
     frames,
     error,
+    filterIds,
+    logStatus,
     connect,
     disconnect,
     sendFrame,
     refreshDevices,
     clearFrames,
-    clearError
+    clearError,
+    setFilter,
+    startLog,
+    stopLog,
+    replay,
+    loadDbc
   } = useCanSocket(url)
 
   return (
@@ -33,6 +41,16 @@ export default function App() {
         onConnect={connect}
         onDisconnect={disconnect}
         onRefresh={refreshDevices}
+      />
+
+      <ToolsPanel
+        filterIds={filterIds}
+        logStatus={logStatus}
+        onSetFilter={setFilter}
+        onStartLog={startLog}
+        onStopLog={stopLog}
+        onReplay={replay}
+        onLoadDbc={loadDbc}
       />
 
       {error && (

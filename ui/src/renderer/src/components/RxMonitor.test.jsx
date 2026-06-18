@@ -70,4 +70,16 @@ describe('RxMonitor', () => {
     // 60초 이상은 분:초.밀리초(m:ss.mmm) 분기로 표시
     expect(screen.getByText('1:01.000')).toBeInTheDocument()
   })
+
+  it('decoded 가 있으면 메시지명과 신호를 서브행으로 표시한다', () => {
+    const decoded = { message: 'EngineData', signals: { Rpm: 1200, Temp: 90 } }
+    render(<RxMonitor frames={[frame({ decoded })]} onClear={() => {}} />)
+    expect(screen.getByText('EngineData')).toBeInTheDocument()
+    expect(screen.getByText('Rpm=1200, Temp=90')).toBeInTheDocument()
+  })
+
+  it('decoded 가 없으면 디코딩 서브행을 렌더하지 않는다', () => {
+    render(<RxMonitor frames={[frame()]} onClear={() => {}} />)
+    expect(document.querySelector('.decoded-row')).toBeNull()
+  })
 })

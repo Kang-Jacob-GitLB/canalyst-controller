@@ -114,6 +114,45 @@ button:disabled {
   cursor: pointer;
 }
 
+/* 도구 패널: 필터 / 로깅 / 재생 / DBC */
+.tools-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #252526;
+  border-radius: 6px;
+  padding: 12px;
+}
+.tools-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tools-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: #aaa;
+}
+.tools-panel label.grow {
+  flex: 1;
+}
+.tools-panel label.grow input {
+  width: 100%;
+}
+.tools-state {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #aaa;
+}
+.tools-err {
+  margin: 0;
+  color: #f48771;
+  font-size: 0.85rem;
+}
+
 /* 메인 그리드: RX 모니터 + TX 패널 */
 .main-grid {
   display: grid;
@@ -173,6 +212,20 @@ button:disabled {
 }
 .mono {
   font-family: 'Consolas', 'Courier New', monospace;
+}
+/* DBC 디코딩 서브행: 메시지명 + 신호 */
+.rx-monitor tr.decoded-row td {
+  padding-top: 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #333;
+  font-size: 0.8rem;
+}
+.decoded-msg {
+  color: #4ec9b0;
+  font-weight: 600;
+}
+.decoded-signals {
+  color: #9cdcfe;
 }
 
 /* TX 패널 */

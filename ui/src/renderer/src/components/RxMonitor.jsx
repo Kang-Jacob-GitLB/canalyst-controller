@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { Fragment, useRef } from 'react'
 
 function fmtData(data) {
   return data.map((b) => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')
@@ -6,6 +6,13 @@ function fmtData(data) {
 
 function fmtId(id, extended) {
   return '0x' + id.toString(16).toUpperCase().padStart(extended ? 8 : 3, '0')
+}
+
+// DBC 디코딩 결과 signals({이름:값})를 "이름=값" 나열 문자열로 변환
+function fmtSignals(signals) {
+  return Object.entries(signals)
+    .map(([name, value]) => `${name}=${value}`)
+    .join(', ')
 }
 
 // 첫 수신 프레임(t0) 기준 상대 경과초로 표시한다.
@@ -59,17 +66,28 @@ export default function RxMonitor({ frames, onClear }) {
               </tr>
             )}
             {rows.map((f) => (
-              <tr key={f._seq}>
-                <td className="mono">{fmtElapsed(f.ts, t0)}</td>
-                <td>{f.channel}</td>
-                <td className="mono">{fmtId(f.can_id, f.extended)}</td>
-                <td>
-                  {f.extended ? 'EXT' : 'STD'}
-                  {f.rtr ? '/RTR' : ''}
-                </td>
-                <td>{f.dlc}</td>
-                <td className="mono">{fmtData(f.data)}</td>
-              </tr>
+              <Fragment key={f._seq}>
+                <tr>
+                  <td className="mono">{fmtElapsed(f.ts, t0)}</td>
+                  <td>{f.channel}</td>
+                  <td className="mono">{fmtId(f.can_id, f.extended)}</td>
+                  <td>
+                    {f.extended ? 'EXT' : 'STD'}
+                    {f.rtr ? '/RTR' : ''}
+                  </td>
+                  <td>{f.dlc}</td>
+                  <td className="mono">{fmtData(f.data)}</td>
+                </tr>
+                {/* DBC 로드 시 디코딩된 메시지명·신호를 서브행으로 표시 */}
+                {f.decoded && (
+                  <tr className="decoded-row">
+                    <td colSpan={6}>
+                      <span className="decoded-msg">{f.decoded.message}</span>{' '}
+                      <span className="decoded-signals mono">{fmtSignals(f.decoded.signals)}</span>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>

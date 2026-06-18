@@ -13,6 +13,8 @@ export function useCanSocket(url) {
   const [devices, setDevices] = useState([])
   const [frames, setFrames] = useState([])
   const [error, setError] = useState(null)
+  const [filterIds, setFilterIds] = useState(null) // null=미통지, []=전체통과
+  const [logStatus, setLogStatus] = useState(null) // null=미통지, {logging,path}
 
   const wsRef = useRef(null)
   const seqRef = useRef(0)
@@ -44,6 +46,12 @@ export function useCanSocket(url) {
           })
           break
         }
+        case 'filter':
+          setFilterIds(msg.ids)
+          break
+        case 'log_status':
+          setLogStatus({ logging: msg.logging, path: msg.path })
+          break
         case 'error':
           setError(msg.message)
           break
@@ -73,17 +81,31 @@ export function useCanSocket(url) {
   const clearFrames = useCallback(() => setFrames([]), [])
   const clearError = useCallback(() => setError(null), [])
 
+  // 필터/로깅/DBC 명령(core 가 결과를 filter·log_status 이벤트나 error 로 통지)
+  const setFilter = useCallback((ids) => send({ type: 'set_filter', ids }), [send])
+  const startLog = useCallback((path) => send({ type: 'start_log', path }), [send])
+  const stopLog = useCallback(() => send({ type: 'stop_log' }), [send])
+  const replay = useCallback((path) => send({ type: 'replay', path }), [send])
+  const loadDbc = useCallback((path) => send({ type: 'load_dbc', path }), [send])
+
   return {
     connState,
     status,
     devices,
     frames,
     error,
+    filterIds,
+    logStatus,
     connect,
     disconnect,
     sendFrame,
     refreshDevices,
     clearFrames,
-    clearError
+    clearError,
+    setFilter,
+    startLog,
+    stopLog,
+    replay,
+    loadDbc
   }
 }
