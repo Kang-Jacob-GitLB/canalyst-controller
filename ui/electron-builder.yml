@@ -8,9 +8,12 @@ directories:
   output: dist
 
 # 앱에 동봉할 파일: electron-vite 산출물(out/) + 런타임 메타데이터
+# build/icon.png 은 패키지(asar) 안에 동봉해야 BrowserWindow 의
+# icon: join(__dirname,'../../build/icon.png') 가 패키지 모드에서도 해석된다.
 files:
   - out/**/*
   - package.json
+  - build/icon.png
 
 # 추가 리소스: PyInstaller 가 생성할 코어 바이너리를 앱 resources/core/ 로 동봉.
 # from 은 ui/ 기준 상대경로(=canalyst-controller/core/dist), to 는 resources 하위 경로.
@@ -23,7 +26,9 @@ extraResources:
     to: core
 
 # Windows: NSIS 설치본 + portable 동시 생성
+# icon 은 build/icon.png(512px) 를 명시. NSIS 용 .ico 는 electron-builder 가 PNG 에서 자동 생성한다.
 win:
+  icon: build/icon.png
   target:
     - nsis
     - portable
@@ -33,13 +38,16 @@ nsis:
   allowToChangeInstallationDirectory: true
 
 # macOS: dmg (호스트가 mac 일 때만 빌드됨)
+# icon 은 build/icon.png 를 명시. .icns 는 electron-builder 가 PNG 에서 자동 생성한다.
 mac:
+  icon: build/icon.png
   target:
     - dmg
   category: public.app-category.developer-tools
 
 # Linux: AppImage (호스트가 linux 일 때만 빌드됨)
 linux:
+  icon: build/icon.png
   target:
     - AppImage
   category: Development
