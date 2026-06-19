@@ -170,7 +170,8 @@ describe('TxPanel', () => {
       render(<TxPanel status={{ connected: true }} onSend={() => {}} />)
 
       await user.click(screen.getByText('프리셋 저장'))
-      expect(screen.getByText(/프리셋 이름/)).toBeInTheDocument()
+      // 라벨("프리셋 이름")과 겹치지 않도록 오류 문구만 정확히 매칭
+      expect(screen.getByText('프리셋 이름을 입력하세요')).toBeInTheDocument()
     })
   })
 })
