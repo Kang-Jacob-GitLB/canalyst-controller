@@ -2,6 +2,7 @@ import { useCanSocket } from './hooks/useCanSocket'
 import StatusBadge from './components/StatusBadge'
 import ConnectionBar from './components/ConnectionBar'
 import ToolsPanel from './components/ToolsPanel'
+import StatsPanel from './components/StatsPanel'
 import RxMonitor from './components/RxMonitor'
 import TxPanel from './components/TxPanel'
 
@@ -15,12 +16,14 @@ export default function App() {
     error,
     filterIds,
     logStatus,
+    stats,
     connect,
     disconnect,
     sendFrame,
     refreshDevices,
     clearFrames,
     clearError,
+    resetStats,
     setFilter,
     startLog,
     stopLog,
@@ -52,6 +55,8 @@ export default function App() {
         onReplay={replay}
         onLoadDbc={loadDbc}
       />
+
+      <StatsPanel stats={stats} onReset={resetStats} />
 
       {error && (
         <p className="app-error" onClick={clearError} title="클릭하여 닫기">
