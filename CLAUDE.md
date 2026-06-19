@@ -9,12 +9,25 @@ CANalyst-II 제어 데스크톱 앱. Python 코어(CAN + WebSocket) + Electron/R
 
 ## WebSocket 프로토콜 (JSON, 한 줄=한 메시지)
 
-- Client→Server: `list_devices` / `connect{device_index,channel,bitrate}` / `disconnect` /
-  `send{channel,can_id,extended,rtr,data:[..]}`
-- Server→Client: `devices{list}` / `status{connected,backend,device,channels}` /
-  `rx{frames:[{ts,channel,can_id,extended,rtr,dlc,data}]}`(배칭) / `error{message}`
-- `bitrate`는 정수(125000/250000/500000/1000000 등 표준값). UI는 드롭다운으로 입력.
-- 한계: canalystii는 송신 ACK/버스에러 보고 불가 → TX는 "큐잉됨" 수준만 반영.
+### Client→Server 명령
+- 연결: `list_devices` / `connect{device_index,channel,bitrate}` / `disconnect`
+- 송신: `send{channel,can_id,extended,rtr,data:[..]}`
+- 수신 필터: `set_filter{ids:[..],mask?,channel?}` — 빈 `ids`=전체 통과. `mask` 생략 시 정확 일치(all-ones), `channel` 생략/null 시 전체 채널. **set_filter는 필터 전체를 교체**(미지정 항목은 기본값으로 리셋).
+- 로깅·재생: `start_log{path}` / `stop_log` / `replay{path}` (기록 포맷은 JSONL, 한 줄=한 프레임)
+- 로그 내보내기: `export_log{src,dest,format:"asc"|"csv"}` — 기록된 JSONL을 표준 포맷(Vector ASC / candump식 CSV)으로 변환. (blf 미지원)
+- DBC: `load_dbc{path}` / `list_dbc_messages` / `encode_send{message,signals:{신호명:값},channel}` — 신호값을 인코딩해 프레임으로 송신.
+
+### Server→Client 이벤트
+- `devices{list}` / `status{connected,backend,device,channels}`
+- `rx{frames:[{ts,channel,can_id,extended,rtr,dlc,data,dir,decoded?}]}`(배칭) — `dir`은 `"rx"`/`"tx"`, DBC 로드 시 각 프레임에 `decoded{message,signals}` 부착.
+- `error{message}`
+- `log_status{logging,path}` / `filter{ids,mask,channel}`(현재 필터 통지)
+- `dbc_messages{messages:[{name,frame_id,is_extended,length,signals:[{name,minimum,maximum,unit}]}]}`
+- `export_status{ok,path,count,format}`
+
+### 참고
+- `bitrate`는 정수(125000/250000/500000/1000000 등 표준값 + 사용자 지정 임의값). UI는 드롭다운/사용자 지정 입력.
+- 한계: canalystii는 송신 ACK/버스에러 보고 불가 → TX는 "큐잉됨" 수준만 반영. CAN FD·다중 장치 자동열거 미지원.
 
 ## 코드 컨벤션
 
