@@ -23,7 +23,9 @@ extraResources:
     to: core
 
 # Windows: NSIS 설치본 + portable 동시 생성
+# icon 은 build/icon.png(512px) 를 명시. NSIS 용 .ico 는 electron-builder 가 PNG 에서 자동 생성한다.
 win:
+  icon: build/icon.png
   target:
     - nsis
     - portable
@@ -33,13 +35,16 @@ nsis:
   allowToChangeInstallationDirectory: true
 
 # macOS: dmg (호스트가 mac 일 때만 빌드됨)
+# icon 은 build/icon.png 를 명시. .icns 는 electron-builder 가 PNG 에서 자동 생성한다.
 mac:
+  icon: build/icon.png
   target:
     - dmg
   category: public.app-category.developer-tools
 
 # Linux: AppImage (호스트가 linux 일 때만 빌드됨)
 linux:
+  icon: build/icon.png
   target:
     - AppImage
   category: Development
