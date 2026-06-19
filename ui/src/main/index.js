@@ -40,7 +40,10 @@ function startCore() {
 
   coreProc = spawn(command, args, {
     cwd,
-    stdio: 'inherit',
+    // 콘솔 앱인 코어를 spawn 할 때 별도 콘솔 창이 뜨지 않게 한다.
+    windowsHide: true,
+    // 패키징 모드는 콘솔 출력을 버려 창을 띄우지 않고, 개발 모드는 터미널 로그를 유지.
+    stdio: app.isPackaged ? 'ignore' : 'inherit',
     // 코어 한글 로그가 콘솔에서 깨지지 않도록 UTF-8 강제
     env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' }
   })
