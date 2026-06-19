@@ -80,8 +80,10 @@ ipcMain.handle('pick-save-file', async (_event, options = {}) => {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1100,
+    width: 1280,
     height: 900,
+    minWidth: 1000,
+    minHeight: 600,
     title: 'CANalyst-II Controller',
     backgroundColor: '#1e1e1e',
     // 개발 모드 창 아이콘. __dirname 은 out/main 이므로 ui/build/icon.png 로 해석된다.

@@ -62,7 +62,8 @@ export default function ToolsPanel({
   onStartLog,
   onStopLog,
   onReplay,
-  onLoadDbc
+  onLoadDbc,
+  initialCollapsed = false
 }) {
   const [filterStr, setFilterStr] = usePersistentState('canctl.tools.filterStr', '')
   const [maskStr, setMaskStr] = usePersistentState('canctl.tools.maskStr', '')
@@ -74,6 +75,8 @@ export default function ToolsPanel({
   const [exportSrc, setExportSrc] = usePersistentState('canctl.tools.exportSrc', '')
   const [exportDest, setExportDest] = usePersistentState('canctl.tools.exportDest', '')
   const [exportFormat, setExportFormat] = usePersistentState('canctl.tools.exportFormat', 'asc')
+  // 도구 패널 접기(기본값은 App 이 initialCollapsed 로 지정 — 앱은 접힘, 테스트는 펼침)
+  const [collapsed, setCollapsed] = usePersistentState('canctl.tools.collapsed', initialCollapsed)
 
   // 파일 다이얼로그는 Electron(preload)에서만 제공 — 일반 브라우저면 버튼 숨김
   const canPick = typeof window !== 'undefined' && !!window.canctl?.pickOpenFile
@@ -127,10 +130,19 @@ export default function ToolsPanel({
   return (
     <section className="tools-panel">
       <div className="panel-header">
-        <h2>도구</h2>
+        <button
+          type="button"
+          className="tools-toggle"
+          onClick={() => setCollapsed((c) => !c)}
+          aria-expanded={!collapsed}
+        >
+          <span className="chev">{collapsed ? '▸' : '▾'}</span> 도구
+        </button>
       </div>
 
-      {/* 수신 필터 */}
+      {!collapsed && (
+        <>
+          {/* 수신 필터 */}
       <form className="tools-row" onSubmit={applyFilter}>
         <label className="grow">
           수신 필터(허용 CAN ID, 16진수 콤마구분 · 빈 입력=전체)
@@ -289,6 +301,8 @@ export default function ToolsPanel({
             ? `${exportStatus.count}개 내보냄 → ${exportStatus.path}`
             : '내보내기 실패'}
         </p>
+      )}
+        </>
       )}
     </section>
   )

@@ -18,19 +18,31 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 16px;
-  gap: 12px;
+  padding: 12px;
+  gap: 10px;
 }
 
-.app-header {
+/* 상단 바: 브랜드 + 상태 + 연결 컨트롤을 한 줄에(고정 높이, 모니터에 자리 양보) */
+.topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #252526;
+  border-radius: 6px;
+  padding: 8px 14px;
 }
-
-.app-header h1 {
-  font-size: 1.3rem;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.brand h1 {
+  font-size: 1.15rem;
   margin: 0;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 
 /* 상태 배지 */
@@ -59,15 +71,12 @@ body {
   font-size: 0.8rem;
 }
 
-/* 연결 바 */
+/* 연결 바: 상단 바 안에 인라인 배치(자체 배경/패딩 제거) */
 .connection-bar {
   display: flex;
   align-items: flex-end;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 12px;
-  background: #252526;
-  border-radius: 6px;
 }
 .connection-bar label {
   display: flex;
@@ -152,23 +161,51 @@ button:disabled {
   color: #f48771;
   font-size: 0.85rem;
 }
+/* 도구 패널 접기 토글(헤더 전체가 버튼) */
+.tools-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e0e0e0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tools-toggle .chev {
+  color: #888;
+  font-size: 0.8rem;
+  width: 0.9em;
+}
 
-/* 메인 그리드: RX 모니터 + 우측 송신 컬럼 */
-.main-grid {
+/* 콘솔: 송수신 모니터(주인공) + 우측 컨트롤 레일 */
+.console {
   display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 12px;
+  grid-template-columns: 1fr 380px;
+  gap: 10px;
   flex: 1;
   min-height: 0;
 }
 
-/* 우측 송신 컬럼: TxPanel + DbcTxPanel 세로 스택(내용 길면 컬럼 내부 스크롤) */
-.tx-column {
+/* 우측 레일: 통계·송신·DBC 세로 스택, 독립 스크롤 → 모니터 높이를 잠식하지 않는다 */
+.rail {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   min-height: 0;
   overflow-y: auto;
+}
+
+/* 좁은 창에서는 모니터 위 / 컨트롤 아래로 스택 */
+@media (max-width: 960px) {
+  .console {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .rail {
+    overflow: visible;
+  }
 }
 
 .panel-header {

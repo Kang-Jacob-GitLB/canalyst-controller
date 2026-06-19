@@ -44,18 +44,19 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <h1>CANalyst-II Controller</h1>
-        <StatusBadge connState={connState} status={status} />
+      <header className="topbar">
+        <div className="brand">
+          <h1>CANalyst-II</h1>
+          <StatusBadge connState={connState} status={status} />
+        </div>
+        <ConnectionBar
+          devices={devices}
+          status={status}
+          onConnect={connect}
+          onDisconnect={disconnect}
+          onRefresh={refreshDevices}
+        />
       </header>
-
-      <ConnectionBar
-        devices={devices}
-        status={status}
-        onConnect={connect}
-        onDisconnect={disconnect}
-        onRefresh={refreshDevices}
-      />
 
       <ToolsPanel
         filterIds={filterIds}
@@ -68,9 +69,8 @@ export default function App() {
         onStopLog={stopLog}
         onReplay={replay}
         onLoadDbc={loadDbc}
+        initialCollapsed
       />
-
-      <StatsPanel stats={stats} onReset={resetStats} />
 
       {error && (
         <p className="app-error" onClick={clearError} title="클릭하여 닫기">
@@ -78,10 +78,11 @@ export default function App() {
         </p>
       )}
 
-      <div className="main-grid">
+      {/* 콘솔: 송수신 모니터(주인공, 전체 높이) + 우측 컨트롤 레일(독립 스크롤) */}
+      <div className="console">
         <RxMonitor frames={frames} onClear={clearFrames} onUseFrame={setTxPrefill} />
-        {/* 우측 송신 컬럼: 일반 프레임 송신 + DBC 인코딩 송신을 세로로 쌓는다(2열 그리드 유지) */}
-        <div className="tx-column">
+        <aside className="rail">
+          <StatsPanel stats={stats} onReset={resetStats} />
           <TxPanel status={status} onSend={sendFrame} prefill={txPrefill} />
           <DbcTxPanel
             dbcMessages={dbcMessages}
@@ -89,7 +90,7 @@ export default function App() {
             onEncodeSend={encodeSend}
             connected={!!status?.connected}
           />
-        </div>
+        </aside>
       </div>
     </div>
   )
