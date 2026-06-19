@@ -305,6 +305,15 @@ button:disabled {
 .rx-monitor tr.frame-tx td {
   background: rgba(255, 180, 0, 0.06);
 }
+/* 로그뷰 행 더블클릭 = 송신 폼 채우기 어포던스(클릭 가능 표시 + 호버 강조) */
+.rx-monitor tbody tr.frame-rx,
+.rx-monitor tbody tr.frame-tx {
+  cursor: pointer;
+}
+.rx-monitor tbody tr.frame-rx:hover td,
+.rx-monitor tbody tr.frame-tx:hover td {
+  background: #2d2d2d;
+}
 
 code {
   background: #2d2d2d;

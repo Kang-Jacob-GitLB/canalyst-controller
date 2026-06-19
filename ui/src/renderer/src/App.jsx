@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useCanSocket } from './hooks/useCanSocket'
 import StatusBadge from './components/StatusBadge'
 import ConnectionBar from './components/ConnectionBar'
@@ -32,8 +33,14 @@ export default function App() {
     replay,
     loadDbc,
     listDbcMessages,
-    encodeSend
+    encodeSend,
+    filterMeta,
+    exportStatus,
+    exportLog
   } = useCanSocket(url)
+
+  // 모니터 행 더블클릭 → 송신 폼 프리필(행→TX). null=프리필 없음.
+  const [txPrefill, setTxPrefill] = useState(null)
 
   return (
     <div className="app">
@@ -52,8 +59,11 @@ export default function App() {
 
       <ToolsPanel
         filterIds={filterIds}
+        filterMeta={filterMeta}
         logStatus={logStatus}
+        exportStatus={exportStatus}
         onSetFilter={setFilter}
+        onExportLog={exportLog}
         onStartLog={startLog}
         onStopLog={stopLog}
         onReplay={replay}
@@ -69,10 +79,10 @@ export default function App() {
       )}
 
       <div className="main-grid">
-        <RxMonitor frames={frames} onClear={clearFrames} />
+        <RxMonitor frames={frames} onClear={clearFrames} onUseFrame={setTxPrefill} />
         {/* 우측 송신 컬럼: 일반 프레임 송신 + DBC 인코딩 송신을 세로로 쌓는다(2열 그리드 유지) */}
         <div className="tx-column">
-          <TxPanel status={status} onSend={sendFrame} />
+          <TxPanel status={status} onSend={sendFrame} prefill={txPrefill} />
           <DbcTxPanel
             dbcMessages={dbcMessages}
             onListMessages={listDbcMessages}
