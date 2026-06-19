@@ -303,17 +303,13 @@ export default function TxPanel({ status, onSend, prefill }) {
       </div>
 
       {presets.length > 0 && (
-        <ul className="tx-presets" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        <ul className="tx-presets">
           {presets.map((p) => (
-            <li
-              key={p.name}
-              className="tx-row"
-              style={{ alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <span className="mono" title={`CH${p.channel} ID ${p.canId} ${p.dataStr}`}>
+            <li key={p.name} className="tx-preset">
+              <span className="tx-preset-name" title={`CH${p.channel} ID ${p.canId} ${p.dataStr}`}>
                 {p.name}
               </span>
-              <span className="tx-row" style={{ gap: 6 }}>
+              <span className="tx-preset-actions">
                 <button type="button" onClick={() => loadPreset(p)}>
                   로드
                 </button>

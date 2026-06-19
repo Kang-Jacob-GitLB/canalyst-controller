@@ -1,5 +1,77 @@
+/* ============================================================
+   CANalyst-II — Spotify 기반 디자인 시스템 (DESIGN.md 토큰화)
+   "content-first darkness": UI 는 어둠 속으로 물러나고,
+   실시간 CAN 트래픽(모니터)이 유일하게 빛나는 콘텐츠가 된다.
+   그린(#1ed760)은 장식이 아니라 기능 전용(연결/송신/활성)으로만 쓴다.
+   ============================================================ */
+
 :root {
   color-scheme: dark;
+
+  /* --- 표면(깊이) : near-black 셰이드 변주로만 단을 만든다 --- */
+  --bg-base: #121212; /* Level 0 — 페이지 바탕(가장 깊은 어둠) */
+  --bg-sidebar: #0a0a0a; /* 좌측 라이브러리 레일(가장 깊게 떨군다) */
+  --bg-surface: #181818; /* Level 1 — 카드/패널 */
+  --bg-input: #1f1f1f; /* 입력/버튼 인터랙티브 표면 */
+  --bg-card: #242424; /* 살짝 떠오른 카드 */
+  --bg-hover: #2a2a2a; /* 행/카드 호버 */
+  --bg-row-alt: #1c1c1c;
+
+  /* --- 브랜드 액센트(기능 전용) --- */
+  --accent: #1ed760; /* Spotify Green — play/연결/송신/활성 */
+  --accent-bright: #1fdf64; /* 호버 시 밝게 */
+  --accent-press: #169c46;
+  --accent-tint: rgba(30, 215, 96, 0.13); /* 활성 토글 배경 틴트 */
+  --on-accent: #000000; /* 그린 위 텍스트/아이콘은 검정 */
+
+  /* --- 텍스트 --- */
+  --text-base: #ffffff;
+  --text-near: #cbcbcb;
+  --text-secondary: #b3b3b3;
+  --text-muted: #7c7c7c;
+
+  /* --- 시맨틱 --- */
+  --negative: #f3727f;
+  --warning: #ffa42b;
+  --info: #539df5;
+
+  /* --- 보더/구분선 --- */
+  --border: #2a2a2a;
+  --border-strong: #4d4d4d;
+  --border-light: #7c7c7c;
+
+  /* --- 그림자(어두운 배경에선 짙어야 보인다) --- */
+  --shadow-card: rgba(0, 0, 0, 0.3) 0px 8px 8px;
+  --shadow-dialog: rgba(0, 0, 0, 0.5) 0px 8px 24px;
+  --inset-input: inset 0 0 0 1px #3a3a3a;
+  --inset-input-focus: inset 0 0 0 1px var(--accent);
+
+  /* --- 반경(필 & 서클 지오메트리) --- */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-pill: 500px;
+  --r-full: 9999px;
+
+  /* --- 간격(8px 베이스) --- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+
+  /* --- 타이포 --- */
+  --font-ui: 'Figtree Variable', 'Figtree', 'Segoe UI Variable Text', 'Segoe UI',
+    -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', 'Malgun Gothic',
+    'Helvetica Neue', Arial, sans-serif;
+  /* hex/데이터 정렬을 위한 모노 — CAN 엔지니어링용 의도적 예외(Spotify 는 전부 비례) */
+  --font-mono: 'Cascadia Code', 'Cascadia Mono', 'Consolas', 'SF Mono', ui-monospace, monospace;
+
+  /* --- 레이아웃 폭 --- */
+  --sidebar-w: 268px;
+  --rail-w: 340px;
 }
 
 * {
@@ -8,182 +80,109 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #1e1e1e;
-  color: #e0e0e0;
+  font-family: var(--font-ui);
+  background: var(--bg-base);
+  color: var(--text-base);
   font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
 }
 
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+/* ============================================================
+   레이아웃: 좌측 라이브러리 레일(연결+도구) | 메인(모니터 + 컨트롤 레일)
+   세로 스택을 없애 모니터가 전체 높이를 쓰게 한다(로그가 쌓여도 안 좁아짐).
+   ============================================================ */
 .app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  height: 100vh;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  background: var(--bg-base);
+}
+
+/* --- 좌측 사이드바: 브랜드 + 상태 + 연결 + 도구(라이브러리처럼 스크롤) --- */
+.sidebar {
+  background: var(--bg-sidebar);
+  border-radius: var(--r-md);
+  padding: var(--sp-4) var(--sp-3);
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  padding: 12px;
-  gap: 10px;
+  gap: var(--sp-4);
+  min-height: 0;
+  overflow-y: auto;
 }
 
-/* 상단 바: 브랜드 + 상태 + 연결 컨트롤을 한 줄에(고정 높이, 모니터에 자리 양보) */
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  background: #252526;
-  border-radius: 6px;
-  padding: 8px 14px;
-}
 .brand {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--sp-3);
 }
-.brand h1 {
-  font-size: 1.15rem;
-  margin: 0;
-  letter-spacing: 0.3px;
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  flex: none;
+  box-shadow: var(--shadow-card);
+}
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.brand-text h1 {
+  font-size: 1.18rem;
+  font-weight: 700;
+  letter-spacing: -0.2px;
   white-space: nowrap;
 }
-
-/* 상태 배지 */
-.status-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.9rem;
-}
-.status-badge .dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-}
-.status-badge .device-state {
-  color: #aaa;
-}
-/* mock(데모) 모드 강조 배지 — 실장비와 한눈에 구분 */
-.status-badge .mock-badge {
-  background: #8a6d00;
-  color: #ffe27a;
-  padding: 2px 8px;
-  border-radius: 10px;
+.brand-sub {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
   font-weight: 600;
-  font-size: 0.8rem;
+  letter-spacing: 0.2px;
 }
 
-/* 연결 바: 상단 바 안에 인라인 배치(자체 배경/패딩 제거) */
-.connection-bar {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.connection-bar label {
+.side-section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 0.8rem;
-  color: #aaa;
+  gap: var(--sp-2);
 }
-.connection-bar select {
-  min-width: 120px;
+.side-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
-
-select,
-input,
-button {
-  background: #333;
-  color: #e0e0e0;
-  border: 1px solid #555;
-  border-radius: 4px;
-  padding: 6px 8px;
-  font-size: 0.9rem;
-}
-button {
-  cursor: pointer;
-}
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.btn-primary {
-  background: #0e639c;
-  border-color: #0e639c;
-}
-.btn-danger {
-  background: #a1260d;
-  border-color: #a1260d;
-}
-
-.app-error {
-  margin: 0;
-  padding: 8px 12px;
-  background: #5a1d1d;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-/* 도구 패널: 필터 / 로깅 / 재생 / DBC */
-.tools-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: #252526;
-  border-radius: 6px;
-  padding: 12px;
-}
-.tools-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.tools-panel label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.8rem;
-  color: #aaa;
-}
-.tools-panel label.grow {
+.side-tools {
   flex: 1;
-}
-.tools-panel label.grow input {
-  width: 100%;
-}
-.tools-state {
-  margin: 0;
-  font-size: 0.85rem;
-  color: #aaa;
-}
-.tools-err {
-  margin: 0;
-  color: #f48771;
-  font-size: 0.85rem;
-}
-/* 도구 패널 접기 토글(헤더 전체가 버튼) */
-.tools-toggle {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #e0e0e0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.tools-toggle .chev {
-  color: #888;
-  font-size: 0.8rem;
-  width: 0.9em;
+  min-height: 0;
 }
 
-/* 콘솔: 송수신 모니터(주인공) + 우측 컨트롤 레일 */
+/* --- 메인 영역: 모니터(주인공) + 우측 컨트롤 레일 --- */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-height: 0;
+  min-width: 0;
+}
+
 .console {
   display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 10px;
+  grid-template-columns: 1fr var(--rail-w);
+  gap: var(--sp-2);
   flex: 1;
   min-height: 0;
 }
@@ -192,46 +191,295 @@ button:disabled {
 .rail {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-2);
   min-height: 0;
   overflow-y: auto;
+  padding-right: 2px;
 }
 
-/* 좁은 창에서는 모니터 위 / 컨트롤 아래로 스택 */
-@media (max-width: 960px) {
-  .console {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
-  }
-  .rail {
-    overflow: visible;
-  }
-}
-
+/* ============================================================
+   타이포 & 공통 요소
+   ============================================================ */
 .panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
 }
 .panel-header h2 {
-  font-size: 1rem;
-  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.2px;
 }
 
-/* RX 모니터 */
+code {
+  background: var(--bg-input);
+  padding: 1px 6px;
+  border-radius: var(--r-xs);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: var(--text-near);
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   폼 컨트롤: 입력/셀렉트는 우묵한(inset) 표면, 버튼은 필 지오메트리
+   ============================================================ */
+label {
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+select,
+input {
+  background: var(--bg-input);
+  color: var(--text-base);
+  border: none;
+  border-radius: var(--r-xs);
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  box-shadow: var(--inset-input);
+  transition: box-shadow 0.12s ease;
+}
+select:hover,
+input:hover {
+  box-shadow: inset 0 0 0 1px #555;
+}
+select:focus,
+input:focus {
+  outline: none;
+  box-shadow: var(--inset-input-focus);
+}
+input[aria-invalid='true'] {
+  box-shadow: inset 0 0 0 1px var(--negative);
+}
+input:disabled,
+select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 버튼 기본형 = Spotify 다크 필(보조 액션) */
+button {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--text-near);
+  background: var(--bg-input);
+  border: none;
+  border-radius: var(--r-full);
+  padding: 8px 16px;
+  transition:
+    transform 0.1s ease,
+    background 0.12s ease,
+    color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+button:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-base);
+}
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 주요 CTA(연결/송신) = 그린 필, 검정 텍스트, 호버 시 확대+밝게(시그니처 무빙) */
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-bright);
+  color: var(--on-accent);
+  transform: scale(1.035);
+}
+.btn-primary:active:not(:disabled) {
+  background: var(--accent-press);
+  transform: scale(0.99);
+}
+
+/* 파괴적 액션(연결해제/로깅중지/삭제) = 아웃라인 레드, 호버 시 채움 */
+.btn-danger {
+  background: transparent;
+  color: var(--negative);
+  box-shadow: inset 0 0 0 1px var(--negative);
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--negative);
+  color: var(--on-accent);
+}
+
+.app-error {
+  margin: 0;
+  padding: 10px 14px;
+  background: rgba(243, 114, 127, 0.12);
+  color: var(--negative);
+  border-radius: var(--r-md);
+  box-shadow: inset 0 0 0 1px rgba(243, 114, 127, 0.4);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* ============================================================
+   상태 배지
+   ============================================================ */
+.status-badge {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+.status-badge .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
+}
+.status-badge .device-state {
+  color: var(--text-muted);
+}
+.status-badge .mock-badge {
+  background: rgba(255, 164, 43, 0.16);
+  color: var(--warning);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.2px;
+}
+
+/* ============================================================
+   연결 바(사이드바 안에서 세로 스택)
+   ============================================================ */
+.connection-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.connection-bar label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.connection-bar select,
+.connection-bar input {
+  width: 100%;
+}
+/* 연결/해제·새로고침 버튼은 풀폭으로 떨어뜨려 사이드바에서 또렷하게 */
+.connection-bar button {
+  width: 100%;
+  margin-top: 2px;
+}
+
+/* ============================================================
+   도구 패널(필터/로깅/재생/DBC/내보내기) — 사이드바의 "라이브러리"
+   ============================================================ */
+.tools-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-height: 0;
+}
+.tools-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.tools-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tools-panel label.grow {
+  flex: 1;
+  min-width: 0;
+}
+.tools-panel label.grow input {
+  width: 100%;
+}
+.tools-state {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.tools-err {
+  margin: 0;
+  color: var(--negative);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+/* 도구 접기 토글(헤더 전체가 버튼) */
+.tools-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 0;
+}
+.tools-toggle:hover:not(:disabled) {
+  background: none;
+  color: var(--text-base);
+}
+.tools-toggle .chev {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  width: 0.9em;
+}
+/* 사이드바에서 도구가 세로로 쌓이도록 각 행을 풀폭 컬럼으로 */
+.side-tools .tools-row {
+  flex-direction: column;
+  align-items: stretch;
+}
+.side-tools .tools-row button {
+  width: 100%;
+}
+
+/* ============================================================
+   RX/TX 모니터 — "트랙 리스트"가 곧 빛나는 콘텐츠
+   ============================================================ */
 .rx-monitor {
   display: flex;
   flex-direction: column;
-  background: #252526;
-  border-radius: 6px;
-  padding: 12px;
+  background: var(--bg-surface);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
   min-height: 0;
+  box-shadow: var(--shadow-card);
 }
 .rx-table-wrap {
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+  border-radius: var(--r-sm);
 }
 .rx-monitor table {
   width: 100%;
@@ -240,122 +488,81 @@ button:disabled {
 .rx-monitor th,
 .rx-monitor td {
   text-align: left;
-  padding: 4px 8px;
-  border-bottom: 1px solid #333;
+  padding: 7px 10px;
   white-space: nowrap;
+}
+.rx-monitor tbody tr {
+  border-bottom: 1px solid var(--border);
 }
 .rx-monitor thead th {
   position: sticky;
   top: 0;
-  background: #2d2d2d;
-  font-size: 0.8rem;
-  color: #aaa;
+  z-index: 1;
+  background: var(--bg-surface);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-strong);
+}
+.rx-monitor tbody td {
+  font-size: 0.84rem;
+  color: var(--text-near);
 }
 .rx-monitor td.empty {
-  color: #777;
+  color: var(--text-muted);
   text-align: center;
-  padding: 24px;
+  padding: 40px 16px;
+  font-weight: 500;
 }
-.mono {
-  font-family: 'Consolas', 'Courier New', monospace;
-}
-/* DBC 디코딩 서브행: 메시지명 + 신호 */
+/* DBC 디코딩 서브행: 트랙 밑 "아티스트·앨범"처럼 부가 정보 */
 .rx-monitor tr.decoded-row td {
   padding-top: 0;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #333;
-  font-size: 0.8rem;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
 }
 .decoded-msg {
-  color: #4ec9b0;
-  font-weight: 600;
-}
-.decoded-signals {
-  color: #9cdcfe;
-}
-
-/* TX 패널 */
-.tx-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: #252526;
-  border-radius: 6px;
-  padding: 12px;
-}
-.tx-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.tx-panel label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.8rem;
-  color: #aaa;
-}
-.tx-panel label.checkbox {
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
-}
-.tx-panel label.grow {
-  flex: 1;
-}
-.tx-panel label.grow input {
-  width: 100%;
-}
-.tx-err {
-  margin: 0;
-  color: #f48771;
-  font-size: 0.85rem;
-}
-.tx-hint {
-  margin: 0;
-  color: #888;
-  font-size: 0.85rem;
-}
-.tx-sent {
-  margin: 0;
-  color: #6ac46a;
-  font-size: 0.85rem;
-}
-
-/* 송수신 방향 배지 */
-.dir-badge {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 0.72rem;
+  color: var(--accent);
   font-weight: 700;
 }
+.decoded-signals {
+  color: var(--text-secondary);
+}
+
+/* 송수신 방향 배지: TX(내 송신)=그린 기능색, RX=중립 */
+.dir-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: var(--r-full);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
 .dir-rx {
-  background: #0e4a73;
-  color: #cce6ff;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 .dir-tx {
-  background: #6a4a00;
-  color: #ffd479;
+  background: var(--accent);
+  color: var(--on-accent);
 }
-.rx-monitor tr.frame-tx td {
-  background: rgba(255, 180, 0, 0.06);
+/* TX 행 = "내 트랙": 그린 좌측 액센트 + 옅은 틴트로 한눈에 구분(기능적 그린) */
+.rx-monitor tbody tr.frame-tx td {
+  background: var(--accent-tint);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
-/* 로그뷰 행 더블클릭 = 송신 폼 채우기 어포던스(클릭 가능 표시 + 호버 강조) */
+/* 행 더블클릭 = 송신 폼 채우기 어포던스 */
 .rx-monitor tbody tr.frame-rx,
 .rx-monitor tbody tr.frame-tx {
   cursor: pointer;
 }
-.rx-monitor tbody tr.frame-rx:hover td,
-.rx-monitor tbody tr.frame-tx:hover td {
-  background: #2d2d2d;
+.rx-monitor tbody tr.frame-rx:hover td {
+  background: var(--bg-hover);
 }
-
-code {
-  background: #2d2d2d;
-  padding: 2px 6px;
-  border-radius: 4px;
+.rx-monitor tbody tr.frame-tx:hover td {
+  background: rgba(30, 215, 96, 0.2);
 }
 
 /* 모니터 툴바: 검색 / 일시정지 / 집계 / 표시상한 / CSV / 지우기 */
@@ -365,41 +572,250 @@ code {
   gap: 6px;
   flex-wrap: wrap;
 }
-.rx-toolbar button,
+.rx-toolbar button {
+  font-size: 0.76rem;
+  padding: 6px 12px;
+}
 .rx-toolbar input,
 .rx-toolbar select {
-  font-size: 0.8rem;
-  padding: 4px 8px;
+  font-size: 0.78rem;
+  padding: 6px 10px;
 }
+/* 검색 = Spotify 검색 필(둥근 알약) */
 .rx-search {
-  min-width: 150px;
+  min-width: 160px;
+  border-radius: var(--r-pill);
+  padding-left: 14px;
 }
-/* 표시 상한 라벨(텍스트 + 셀렉트 가로 정렬) */
 .rx-limit {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.8rem;
-  color: #aaa;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
 }
-/* 토글 버튼(일시정지·집계) 활성 상태 강조 */
+.rx-limit select {
+  border-radius: var(--r-pill);
+}
+/* 토글(일시정지·집계) 활성 = 기능적 그린 강조 */
 .rx-toolbar button[aria-pressed='true'] {
-  background: #0e639c;
-  border-color: #0e639c;
+  background: var(--accent-tint);
+  color: var(--accent);
 }
-/* 일시정지 표식 */
 .rx-paused {
-  color: #ffd479;
-  font-size: 0.85rem;
+  color: var(--warning);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+/* ============================================================
+   TX 패널 / DBC 패널(카드)
+   ============================================================ */
+.tx-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  background: var(--bg-surface);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  box-shadow: var(--shadow-card);
+}
+.tx-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.tx-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tx-panel label.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-near);
+  font-weight: 600;
+}
+.tx-panel label.checkbox input {
+  box-shadow: none;
+  accent-color: var(--accent);
+  width: auto;
+}
+.tx-panel label.grow {
+  flex: 1;
+  min-width: 0;
+}
+.tx-panel label.grow input {
+  width: 100%;
+}
+.tx-err {
+  margin: 0;
+  color: var(--negative);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.tx-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.tx-sent {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.8rem;
   font-weight: 600;
 }
 
-/* 수신 통계 패널 */
-.stats-panel .panel-header {
-  margin-bottom: 4px;
+/* 송신 프리셋 목록(인라인 스타일 → 클래스로 토큰화) */
+.tx-presets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.stats-byid table th,
-.stats-byid table td {
-  padding: 3px 6px;
-  border-bottom: 1px solid #333;
+.tx-preset {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  background: var(--bg-input);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+}
+.tx-preset-name {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text-near);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tx-preset-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.tx-preset-actions button {
+  padding: 5px 11px;
+  font-size: 0.74rem;
+}
+
+/* DBC 신호 입력의 범위/단위 힌트 */
+.dbc-signals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.dbc-range {
+  align-self: flex-end;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  padding-bottom: 8px;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   수신 통계 패널(카드) — "지금 듣는 곡" 메트릭처럼 큰 숫자
+   ============================================================ */
+.stats-panel {
+  background: var(--bg-surface);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+}
+.stats-panel .panel-header {
+  margin-bottom: var(--sp-3);
+}
+.stats-metrics {
+  display: flex;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+}
+.stat-label {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.stat-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-base);
+  line-height: 1.2;
+}
+.stat-value.accent {
+  color: var(--accent);
+}
+.stats-byid {
+  margin-top: var(--sp-3);
+  max-height: 168px;
+  overflow-y: auto;
+}
+.stats-byid table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.stats-byid th {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 4px 6px;
+}
+.stats-byid th.num,
+.stats-byid td.num {
+  text-align: right;
+}
+.stats-byid td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+  color: var(--text-near);
+}
+
+/* ============================================================
+   반응형: 좁아지면 레일을 모니터 아래로, 더 좁으면 사이드바를 상단으로
+   ============================================================ */
+@media (max-width: 1120px) {
+  .console {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .rail {
+    overflow: visible;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .rail > * {
+    flex: 1 1 280px;
+  }
+}
+
+@media (max-width: 860px) {
+  .app {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
+  }
+  .sidebar {
+    overflow: visible;
+  }
+  .rail {
+    flex-direction: column;
+  }
+}
+
+/* 모션 최소화 선호 존중 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
 }

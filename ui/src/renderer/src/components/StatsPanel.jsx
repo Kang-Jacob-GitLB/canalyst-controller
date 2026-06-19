@@ -20,49 +20,41 @@ export default function StatsPanel({ stats, onReset }) {
     .sort((a, b) => b[1] - a[1] || a[0] - b[0])
 
   return (
-    <section className="stats-panel tools-panel">
+    <section className="stats-panel">
       <div className="panel-header">
         <h2>수신 통계</h2>
         <button onClick={onReset}>통계 초기화</button>
       </div>
 
-      <div className="tools-row" style={{ gap: 24 }}>
+      <div className="stats-metrics">
         <div>
-          <div style={{ fontSize: '0.8rem', color: '#aaa' }}>총 프레임</div>
-          <div className="mono" style={{ fontSize: '1.2rem' }}>
-            {total}
-          </div>
+          <div className="stat-label">총 프레임</div>
+          <div className="stat-value">{total}</div>
         </div>
         <div>
-          <div style={{ fontSize: '0.8rem', color: '#aaa' }}>고유 ID</div>
-          <div className="mono" style={{ fontSize: '1.2rem' }}>
-            {uniqueIds}
-          </div>
+          <div className="stat-label">고유 ID</div>
+          <div className="stat-value">{uniqueIds}</div>
         </div>
         <div>
-          <div style={{ fontSize: '0.8rem', color: '#aaa' }}>수신 레이트</div>
-          <div className="mono" style={{ fontSize: '1.2rem' }}>
-            {rate.toFixed(0)} msg/s
-          </div>
+          <div className="stat-label">수신 레이트</div>
+          <div className="stat-value accent">{rate.toFixed(0)} msg/s</div>
         </div>
       </div>
 
       {uniqueIds > 0 && (
-        <div className="stats-byid" style={{ marginTop: 8, maxHeight: 160, overflowY: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="stats-byid">
+          <table>
             <thead>
               <tr>
-                <th style={{ textAlign: 'left', fontSize: '0.8rem', color: '#aaa' }}>ID</th>
-                <th style={{ textAlign: 'right', fontSize: '0.8rem', color: '#aaa' }}>카운트</th>
+                <th>ID</th>
+                <th className="num">카운트</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map(([id, count]) => (
                 <tr key={id}>
                   <td className="mono">{fmtId(id)}</td>
-                  <td className="mono" style={{ textAlign: 'right' }}>
-                    {count}
-                  </td>
+                  <td className="mono num">{count}</td>
                 </tr>
               ))}
             </tbody>

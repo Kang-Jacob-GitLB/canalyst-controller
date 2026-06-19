@@ -85,7 +85,7 @@ function createWindow() {
     minWidth: 1000,
     minHeight: 600,
     title: 'CANalyst-II Controller',
-    backgroundColor: '#1e1e1e',
+    backgroundColor: '#121212',
     // 개발 모드 창 아이콘. __dirname 은 out/main 이므로 ui/build/icon.png 로 해석된다.
     // (패키징 창/실행 파일 아이콘은 electron-builder 가 build/icon.png 에서 별도 생성한다.)
     icon: join(__dirname, '../../build/icon.png'),

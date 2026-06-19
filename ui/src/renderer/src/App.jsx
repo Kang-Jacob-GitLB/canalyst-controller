@@ -8,6 +8,19 @@ import RxMonitor from './components/RxMonitor'
 import TxPanel from './components/TxPanel'
 import DbcTxPanel from './components/DbcTxPanel'
 
+// 브랜드 마크: CAN 신호 파형을 그린 디스크 안에 담은 로고(시그니처).
+// 그린은 기능색이지만 브랜드 아이덴티티 1곳에만 허용한다.
+function BrandMark() {
+  return (
+    <span className="brand-mark" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 12h3l2.5-6 4 13 3-9 2.5 4H22" />
+      </svg>
+    </span>
+  )
+}
+
 export default function App() {
   const url = window.canctl?.coreUrl ?? 'ws://127.0.0.1:8765'
   const {
@@ -44,54 +57,67 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="topbar">
+      {/* 좌측 라이브러리 레일: 브랜드 + 상태 + 연결 + 도구(자주 안 만지는 설정) */}
+      <nav className="sidebar">
         <div className="brand">
-          <h1>CANalyst-II</h1>
-          <StatusBadge connState={connState} status={status} />
+          <BrandMark />
+          <div className="brand-text">
+            <h1>CANalyst-II</h1>
+            <span className="brand-sub">CAN 분석 콘솔</span>
+          </div>
         </div>
-        <ConnectionBar
-          devices={devices}
-          status={status}
-          onConnect={connect}
-          onDisconnect={disconnect}
-          onRefresh={refreshDevices}
-        />
-      </header>
 
-      <ToolsPanel
-        filterIds={filterIds}
-        filterMeta={filterMeta}
-        logStatus={logStatus}
-        exportStatus={exportStatus}
-        onSetFilter={setFilter}
-        onExportLog={exportLog}
-        onStartLog={startLog}
-        onStopLog={stopLog}
-        onReplay={replay}
-        onLoadDbc={loadDbc}
-        initialCollapsed
-      />
+        <StatusBadge connState={connState} status={status} />
 
-      {error && (
-        <p className="app-error" onClick={clearError} title="클릭하여 닫기">
-          오류: {error}
-        </p>
-      )}
-
-      {/* 콘솔: 송수신 모니터(주인공, 전체 높이) + 우측 컨트롤 레일(독립 스크롤) */}
-      <div className="console">
-        <RxMonitor frames={frames} onClear={clearFrames} onUseFrame={setTxPrefill} />
-        <aside className="rail">
-          <StatsPanel stats={stats} onReset={resetStats} />
-          <TxPanel status={status} onSend={sendFrame} prefill={txPrefill} />
-          <DbcTxPanel
-            dbcMessages={dbcMessages}
-            onListMessages={listDbcMessages}
-            onEncodeSend={encodeSend}
-            connected={!!status?.connected}
+        <section className="side-section">
+          <h2 className="side-title">연결</h2>
+          <ConnectionBar
+            devices={devices}
+            status={status}
+            onConnect={connect}
+            onDisconnect={disconnect}
+            onRefresh={refreshDevices}
           />
-        </aside>
-      </div>
+        </section>
+
+        <section className="side-section side-tools">
+          <ToolsPanel
+            filterIds={filterIds}
+            filterMeta={filterMeta}
+            logStatus={logStatus}
+            exportStatus={exportStatus}
+            onSetFilter={setFilter}
+            onExportLog={exportLog}
+            onStartLog={startLog}
+            onStopLog={stopLog}
+            onReplay={replay}
+            onLoadDbc={loadDbc}
+          />
+        </section>
+      </nav>
+
+      {/* 메인: 송수신 모니터(주인공, 전체 높이) + 우측 컨트롤 레일(독립 스크롤) */}
+      <main className="main">
+        {error && (
+          <p className="app-error" onClick={clearError} title="클릭하여 닫기">
+            오류: {error}
+          </p>
+        )}
+
+        <div className="console">
+          <RxMonitor frames={frames} onClear={clearFrames} onUseFrame={setTxPrefill} />
+          <aside className="rail">
+            <StatsPanel stats={stats} onReset={resetStats} />
+            <TxPanel status={status} onSend={sendFrame} prefill={txPrefill} />
+            <DbcTxPanel
+              dbcMessages={dbcMessages}
+              onListMessages={listDbcMessages}
+              onEncodeSend={encodeSend}
+              connected={!!status?.connected}
+            />
+          </aside>
+        </div>
+      </main>
     </div>
   )
 }

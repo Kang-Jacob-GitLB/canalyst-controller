@@ -88,7 +88,7 @@ export default function DbcTxPanel({ dbcMessages, onListMessages, onEncodeSend, 
                   onChange={(e) => setValues((prev) => ({ ...prev, [s.name]: e.target.value }))}
                 />
               </label>
-              <span className="mono" style={{ alignSelf: 'flex-end', opacity: 0.7, fontSize: 12 }}>
+              <span className="mono dbc-range">
                 {s.unit ? `${s.unit} ` : ''}
                 {`[${s.minimum ?? '?'}..${s.maximum ?? '?'}]`}
               </span>

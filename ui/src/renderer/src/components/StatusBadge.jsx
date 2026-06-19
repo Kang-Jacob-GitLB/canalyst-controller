@@ -5,18 +5,19 @@ const LABELS = {
   error: '코어 오류'
 }
 
+// 디자인 토큰과 일치(그린=연결, 네거티브 레드=오류, 워닝 오렌지=끊김, 뮤트=연결중)
 const COLORS = {
-  open: '#4caf50',
-  error: '#f44336',
-  closed: '#ff9800',
-  connecting: '#999'
+  open: '#1ed760',
+  error: '#f3727f',
+  closed: '#ffa42b',
+  connecting: '#7c7c7c'
 }
 
 export default function StatusBadge({ connState, status }) {
   const isMock = status?.backend === 'mock'
   return (
     <div className="status-badge">
-      <span className="dot" style={{ background: COLORS[connState] ?? '#999' }} />
+      <span className="dot" style={{ background: COLORS[connState] ?? '#7c7c7c' }} />
       <span>{LABELS[connState] ?? connState}</span>
       {status && (
         <span className="device-state">
