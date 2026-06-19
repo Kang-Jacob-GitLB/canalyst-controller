@@ -1,0 +1,54 @@
+VERSION ""
+
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: ECU Dashboard
+
+
+BO_ 256 EngineData: 4 ECU
+ SG_ EngineRPM : 0|16@1+ (1,0) [0|8000] "rpm"  Dashboard
+ SG_ EngineTemp : 16|8@1+ (1,-40) [-40|215] "degC"  Dashboard
+
+BO_ 512 VehicleSpeed: 3 ECU
+ SG_ Speed : 0|16@1+ (1,0) [0|65535] "km/h"  Dashboard
+ SG_ Gear : 16|8@1+ (1,0) [0|0] ""  Dashboard
+
+
+
+CM_ BO_ 256 "엔진 데이터: 회전수와 냉각수 온도";
+CM_ SG_ 256 EngineRPM "엔진 회전수";
+CM_ SG_ 256 EngineTemp "엔진 냉각수 온도";
+CM_ BO_ 512 "차량 속도와 기어 단수";
+CM_ SG_ 512 Speed "차량 속도";
+CM_ SG_ 512 Gear "기어 단수(범위·단위 미지정 신호 예시)";

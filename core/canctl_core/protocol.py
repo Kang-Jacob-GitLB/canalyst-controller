@@ -9,6 +9,7 @@ from typing import Any
 VALID_COMMANDS = {
     "list_devices", "connect", "disconnect", "send",
     "set_filter", "start_log", "stop_log", "replay", "load_dbc",
+    "list_dbc_messages", "encode_send",
 }
 
 
@@ -94,6 +95,11 @@ def make_filter(ids: list[int]) -> str:
     return json.dumps({"type": "filter", "ids": list(ids)})
 
 
+def make_dbc_messages(messages: list[dict]) -> str:
+    """로드된 DBC 의 메시지·신호 메타데이터 통지(list_dbc_messages 응답)."""
+    return json.dumps({"type": "dbc_messages", "messages": list(messages)})
+
+
 # --- Client→Server 명령 파싱·검증 ---
 
 def parse_command(raw: str) -> dict[str, Any]:
@@ -129,6 +135,11 @@ def parse_command(raw: str) -> dict[str, Any]:
         _require_str(msg, "path")
     elif cmd == "load_dbc":
         _require_str(msg, "path")
+    elif cmd == "encode_send":
+        _require_str(msg, "message")
+        _require_int(msg, "channel")
+        _require_dict(msg, "signals")
+    # list_dbc_messages 는 추가 인자가 없다(검증 불필요)
     return msg
 
 
@@ -147,6 +158,15 @@ def _require_str(msg: dict, key: str) -> None:
     value = msg[key]
     if not isinstance(value, str) or not value:
         raise ProtocolError(f"필드 {key} 는 비어있지 않은 문자열이어야 합니다")
+
+
+def _require_dict(msg: dict, key: str) -> None:
+    if key not in msg:
+        raise ProtocolError(f"필수 필드 누락: {key}")
+    value = msg[key]
+    # bool/list 등은 dict 가 아니며, JSON 객체만 허용한다
+    if not isinstance(value, dict):
+        raise ProtocolError(f"필드 {key} 는 객체여야 합니다")
 
 
 def _validate_data(data: Any) -> None:

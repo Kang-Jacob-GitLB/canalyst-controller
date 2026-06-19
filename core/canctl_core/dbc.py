@@ -67,6 +67,52 @@ class DbcDecoder:
             "signals": {name: _jsonable(value) for name, value in signals.items()},
         }
 
+    def list_messages(self) -> list[dict] | None:
+        """로드된 DBC 의 메시지·신호 메타데이터 목록을 반환.
+
+        UI 가 송신 폼을 구성할 수 있도록 각 메시지의 이름/ID/길이와 신호별
+        이름·범위·단위를 제공한다. 미로드 상태면 None(서버가 안내성 error 처리).
+        minimum/maximum/unit 은 DBC 에 정의되지 않았으면 None 일 수 있다.
+        """
+        if self._db is None:
+            return None
+        messages = []
+        for message in self._db.messages:
+            signals = [
+                {
+                    "name": signal.name,
+                    "minimum": signal.minimum,
+                    "maximum": signal.maximum,
+                    "unit": signal.unit,
+                }
+                for signal in message.signals
+            ]
+            messages.append({
+                "name": message.name,
+                "frame_id": message.frame_id,
+                "is_extended": message.is_extended_frame,
+                "length": message.length,
+                "signals": signals,
+            })
+        return messages
+
+    def encode(self, name: str, signals: dict) -> tuple[int, bool, list[int]]:
+        """메시지 이름과 신호 dict 를 받아 (frame_id, is_extended, data) 로 인코딩.
+
+        data 는 0..255 정수 리스트(서버가 그대로 backend.send 와 make_rx 에 사용).
+        없는 메시지/누락 신호/범위 초과 등 cantools 인코딩 오류는 읽기 쉬운
+        ValueError 로 변환해 서버가 error 로 표면화하게 한다.
+        DBC 미로드 상태에서 호출되면 안 되며(서버가 사전 차단), 호출되면 ValueError.
+        """
+        if self._db is None:
+            raise ValueError("DBC 가 로드되지 않았습니다")
+        try:
+            message = self._db.get_message_by_name(name)
+            data = message.encode(signals)
+        except Exception as exc:  # KeyError/EncodeError 등 다양한 예외를 통합 처리
+            raise ValueError(f"인코딩 실패: {exc}") from exc
+        return message.frame_id, message.is_extended_frame, list(data)
+
 
 def _jsonable(value: Any) -> Any:
     """cantools 신호 값을 JSON 직렬화 가능한 형태로 변환."""

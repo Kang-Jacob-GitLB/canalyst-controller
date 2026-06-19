@@ -113,6 +113,29 @@ class CanServer:
             elif cmd == "load_dbc":
                 self._decoder.load(msg["path"])
                 log.info("DBC 로드 완료: %s", msg["path"])
+            elif cmd == "list_dbc_messages":
+                if not self._decoder.loaded:
+                    await ws.send(protocol.make_error(
+                        "DBC가 로드되지 않았습니다. 먼저 DBC를 로드하세요"))
+                else:
+                    # 요청자에게만 메시지 목록을 회신(broadcast 아님)
+                    await ws.send(protocol.make_dbc_messages(
+                        self._decoder.list_messages()))
+            elif cmd == "encode_send":
+                if not self._decoder.loaded:
+                    await ws.send(protocol.make_error(
+                        "DBC가 로드되지 않았습니다. 먼저 DBC를 로드하세요"))
+                else:
+                    # 신호 dict 를 인코딩 → 백엔드 송신 → tx 프레임을 모니터에 echo
+                    frame_id, is_extended, data = self._decoder.encode(
+                        msg["message"], msg["signals"])
+                    self._backend.send(msg["channel"], frame_id, is_extended, False, data)
+                    tx = CanFrame(
+                        ts=time.time(), channel=msg["channel"], can_id=frame_id,
+                        extended=is_extended, rtr=False,
+                        dlc=len(data), data=list(data), dir="tx",
+                    )
+                    await self._broadcast(protocol.make_rx([tx], decoder=self._decoder))
         except DbcUnavailable as exc:  # cantools 미설치 등은 안내성 error
             await ws.send(protocol.make_error(str(exc)))
         except Exception as exc:  # 백엔드 오류를 클라이언트로 표면화
