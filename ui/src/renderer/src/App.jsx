@@ -5,6 +5,7 @@ import ToolsPanel from './components/ToolsPanel'
 import StatsPanel from './components/StatsPanel'
 import RxMonitor from './components/RxMonitor'
 import TxPanel from './components/TxPanel'
+import DbcTxPanel from './components/DbcTxPanel'
 
 export default function App() {
   const url = window.canctl?.coreUrl ?? 'ws://127.0.0.1:8765'
@@ -17,6 +18,7 @@ export default function App() {
     filterIds,
     logStatus,
     stats,
+    dbcMessages,
     connect,
     disconnect,
     sendFrame,
@@ -28,7 +30,9 @@ export default function App() {
     startLog,
     stopLog,
     replay,
-    loadDbc
+    loadDbc,
+    listDbcMessages,
+    encodeSend
   } = useCanSocket(url)
 
   return (
@@ -66,7 +70,16 @@ export default function App() {
 
       <div className="main-grid">
         <RxMonitor frames={frames} onClear={clearFrames} />
-        <TxPanel status={status} onSend={sendFrame} />
+        {/* 우측 송신 컬럼: 일반 프레임 송신 + DBC 인코딩 송신을 세로로 쌓는다(2열 그리드 유지) */}
+        <div className="tx-column">
+          <TxPanel status={status} onSend={sendFrame} />
+          <DbcTxPanel
+            dbcMessages={dbcMessages}
+            onListMessages={listDbcMessages}
+            onEncodeSend={encodeSend}
+            connected={!!status?.connected}
+          />
+        </div>
       </div>
     </div>
   )

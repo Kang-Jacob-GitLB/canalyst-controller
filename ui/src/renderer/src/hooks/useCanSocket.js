@@ -23,6 +23,7 @@ export function useCanSocket(url) {
   const [filterIds, setFilterIds] = useState(null) // null=미통지, []=전체통과
   const [logStatus, setLogStatus] = useState(null) // null=미통지, {logging,path}
   const [stats, setStats] = useState(EMPTY_STATS) // 누적 수신 통계(frames 와 독립)
+  const [dbcMessages, setDbcMessages] = useState([]) // 로드된 DBC 메시지 정의 목록
 
   const wsRef = useRef(null)
   const seqRef = useRef(0)
@@ -87,6 +88,9 @@ export function useCanSocket(url) {
         case 'log_status':
           setLogStatus({ logging: msg.logging, path: msg.path })
           break
+        case 'dbc_messages':
+          setDbcMessages(msg.messages)
+          break
         case 'error':
           setError(msg.message)
           break
@@ -127,6 +131,13 @@ export function useCanSocket(url) {
   const stopLog = useCallback(() => send({ type: 'stop_log' }), [send])
   const replay = useCallback((path) => send({ type: 'replay', path }), [send])
   const loadDbc = useCallback((path) => send({ type: 'load_dbc', path }), [send])
+  // DBC 송신: 메시지 정의 목록 요청 / 신호값 인코딩 후 송신.
+  // (코어가 dbc_messages 이벤트나 error 로 통지하고, 송신 프레임은 rx 에코로 돌아온다)
+  const listDbcMessages = useCallback(() => send({ type: 'list_dbc_messages' }), [send])
+  const encodeSend = useCallback(
+    (message, signals, channel) => send({ type: 'encode_send', message, signals, channel }),
+    [send]
+  )
 
   return {
     connState,
@@ -137,6 +148,7 @@ export function useCanSocket(url) {
     filterIds,
     logStatus,
     stats,
+    dbcMessages,
     connect,
     disconnect,
     sendFrame,
@@ -148,6 +160,8 @@ export function useCanSocket(url) {
     startLog,
     stopLog,
     replay,
-    loadDbc
+    loadDbc,
+    listDbcMessages,
+    encodeSend
   }
 }

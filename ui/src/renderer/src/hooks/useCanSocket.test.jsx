@@ -171,6 +171,44 @@ describe('useCanSocket', () => {
     ])
   })
 
+  it('dbc_messages 수신 시 dbcMessages 를 세팅한다', () => {
+    const { result } = renderHook(() => useCanSocket('ws://x'))
+    const ws = FakeWebSocket.last
+    act(() => ws._open())
+
+    expect(result.current.dbcMessages).toEqual([]) // 초기값
+
+    const messages = [
+      {
+        name: 'EngineData',
+        frame_id: 0x100,
+        is_extended: false,
+        length: 8,
+        signals: [
+          { name: 'RPM', minimum: 0, maximum: 8000, unit: 'rpm' },
+          { name: 'Temp', minimum: -40, maximum: 215, unit: 'degC' }
+        ]
+      }
+    ]
+    act(() => ws._message({ type: 'dbc_messages', messages }))
+    expect(result.current.dbcMessages).toEqual(messages)
+  })
+
+  it('listDbcMessages·encodeSend 를 프로토콜 형식으로 전송한다', () => {
+    const { result } = renderHook(() => useCanSocket('ws://x'))
+    const ws = FakeWebSocket.last
+    act(() => ws._open()) // sent[0]=list_devices
+
+    act(() => result.current.listDbcMessages())
+    act(() => result.current.encodeSend('EngineData', { RPM: 1200, Temp: -10 }, 1))
+
+    const sent = ws.sent.slice(1).map((s) => JSON.parse(s)) // 자동 list_devices 제외
+    expect(sent).toEqual([
+      { type: 'list_dbc_messages' },
+      { type: 'encode_send', message: 'EngineData', signals: { RPM: 1200, Temp: -10 }, channel: 1 }
+    ])
+  })
+
   it('filter·log_status 이벤트를 filterIds·logStatus 로 디스패치한다', () => {
     const { result } = renderHook(() => useCanSocket('ws://x'))
     const ws = FakeWebSocket.last

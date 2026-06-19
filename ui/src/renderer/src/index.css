@@ -153,13 +153,22 @@ button:disabled {
   font-size: 0.85rem;
 }
 
-/* 메인 그리드: RX 모니터 + TX 패널 */
+/* 메인 그리드: RX 모니터 + 우측 송신 컬럼 */
 .main-grid {
   display: grid;
   grid-template-columns: 1fr 360px;
   gap: 12px;
   flex: 1;
   min-height: 0;
+}
+
+/* 우측 송신 컬럼: TxPanel + DbcTxPanel 세로 스택(내용 길면 컬럼 내부 스크롤) */
+.tx-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .panel-header {
