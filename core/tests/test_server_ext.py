@@ -82,6 +82,70 @@ def test_apply_filter_all_blocked():
     assert srv._apply_filter(_frames()) == []
 
 
+# --- _apply_filter: 마스크/채널 확장 ---
+
+def _multi_channel_frames():
+    """채널이 섞인 프레임(채널 필터 검증용)."""
+    return [
+        CanFrame(1.0, 0, 0x100, False, False, 2, [1, 2]),
+        CanFrame(1.0, 0, 0x101, False, False, 1, [9]),
+        CanFrame(1.0, 1, 0x200, False, False, 2, [0xAA, 0x55]),
+        CanFrame(1.0, 1, 0x7FF, False, False, 0, []),
+    ]
+
+
+def test_apply_filter_mask_range_match():
+    # mask=0x700 으로 0x100/0x101 을 같은 그룹(0x100)으로 매칭
+    srv = CanServer(FakeBackend())
+    srv._filter_ids = {0x100}
+    srv._filter_mask = 0x700
+    passed = srv._apply_filter(_multi_channel_frames())
+    assert [f.can_id for f in passed] == [0x100, 0x101]
+
+
+def test_apply_filter_mask_zero_matches_all_ids():
+    # mask=0 이면 (id & 0) == 0 이므로 모든 id 가 매칭(예외 없음)
+    srv = CanServer(FakeBackend())
+    srv._filter_ids = {0x999}  # 존재하지 않는 id 라도
+    srv._filter_mask = 0
+    passed = srv._apply_filter(_multi_channel_frames())
+    assert len(passed) == 4  # 전부 통과
+
+
+def test_apply_filter_channel_only():
+    # ids 비어있으면 id 전체 통과, channel=1 인 것만
+    srv = CanServer(FakeBackend())
+    srv._filter_channel = 1
+    passed = srv._apply_filter(_multi_channel_frames())
+    assert [f.can_id for f in passed] == [0x200, 0x7FF]
+
+
+def test_apply_filter_channel_zero():
+    # channel=0 은 유효값(falsy 아님) — 채널 0 만 통과
+    srv = CanServer(FakeBackend())
+    srv._filter_channel = 0
+    passed = srv._apply_filter(_multi_channel_frames())
+    assert [f.can_id for f in passed] == [0x100, 0x101]
+
+
+def test_apply_filter_channel_and_ids():
+    # channel 과 id 는 AND
+    srv = CanServer(FakeBackend())
+    srv._filter_ids = {0x100, 0x200}
+    srv._filter_channel = 1
+    passed = srv._apply_filter(_multi_channel_frames())
+    assert [f.can_id for f in passed] == [0x200]
+
+
+def test_apply_filter_defaults_none():
+    # __init__ 기본값: mask/channel None, ids 빈 set → 전체 통과
+    srv = CanServer(FakeBackend())
+    assert srv._filter_mask is None
+    assert srv._filter_channel is None
+    frames = _multi_channel_frames()
+    assert srv._apply_filter(frames) == frames
+
+
 # --- 명령 핸들러: set_filter ---
 
 def test_handle_set_filter_updates_state_and_broadcasts():
@@ -93,6 +157,79 @@ def test_handle_set_filter_updates_state_and_broadcasts():
     filt = [m for m in ws.sent if m["type"] == "filter"]
     assert len(filt) == 1
     assert filt[0]["ids"] == [256, 2047]  # 정렬되어 통지
+    # mask/channel 미지정 시 기본값으로 통지(all-ones / null)
+    assert filt[0]["mask"] == 0xFFFFFFFF
+    assert filt[0]["channel"] is None
+
+
+def test_handle_set_filter_with_mask_and_channel():
+    srv = CanServer(FakeBackend())
+    ws = FakeWs()
+    srv._clients.add(ws)
+    asyncio.run(srv._handle_command(
+        ws, '{"type":"set_filter","ids":[256],"mask":1792,"channel":0}'))
+    assert srv._filter_ids == {256}
+    assert srv._filter_mask == 1792
+    assert srv._filter_channel == 0  # channel=0 유효
+    filt = [m for m in ws.sent if m["type"] == "filter"][0]
+    assert filt["mask"] == 1792
+    assert filt["channel"] == 0
+
+
+def test_handle_set_filter_replaces_previous_mask_channel():
+    # set_filter 는 필터 전체를 교체: mask/channel 미지정 시 기본값으로 재설정
+    srv = CanServer(FakeBackend())
+    ws = FakeWs()
+    srv._clients.add(ws)
+    asyncio.run(srv._handle_command(
+        ws, '{"type":"set_filter","ids":[256],"mask":1792,"channel":1}'))
+    assert srv._filter_mask == 1792 and srv._filter_channel == 1
+    # 다음 set_filter 가 mask/channel 없이 오면 기본값으로 되돌아간다
+    asyncio.run(srv._handle_command(ws, '{"type":"set_filter","ids":[512]}'))
+    assert srv._filter_ids == {512}
+    assert srv._filter_mask is None
+    assert srv._filter_channel is None
+
+
+# --- 명령 핸들러: export_log ---
+
+def test_handle_export_log_csv(tmp_path):
+    # 먼저 기록 파일 준비
+    from canctl_core.recorder import FrameRecorder
+    src = str(tmp_path / "rec.jsonl")
+    rec = FrameRecorder()
+    rec.start(src)
+    rec.record(_frames())
+    rec.stop()
+
+    dest = str(tmp_path / "out.csv")
+    srv = CanServer(FakeBackend())
+    ws = FakeWs()
+    # 클라이언트로 등록하지 않아도 요청자(ws)에게 직접 회신되어야 한다(broadcast 아님)
+    asyncio.run(srv._handle_command(
+        ws, json.dumps({"type": "export_log", "src": src,
+                        "dest": dest, "format": "csv"})))
+    es = [m for m in ws.sent if m["type"] == "export_status"]
+    assert len(es) == 1
+    assert es[0]["ok"] is True
+    assert es[0]["count"] == 3
+    assert es[0]["format"] == "csv"
+    assert es[0]["path"] == dest
+    import os
+    assert os.path.exists(dest)
+
+
+def test_handle_export_log_missing_src_surfaces_error(tmp_path):
+    # src 파일이 없으면 기존 try/except 가 error 로 표면화
+    dest = str(tmp_path / "out.csv")
+    srv = CanServer(FakeBackend())
+    ws = FakeWs()
+    asyncio.run(srv._handle_command(
+        ws, json.dumps({"type": "export_log",
+                        "src": str(tmp_path / "nope.jsonl"),
+                        "dest": dest, "format": "csv"})))
+    assert any(m["type"] == "error" for m in ws.sent)
+    assert not any(m["type"] == "export_status" for m in ws.sent)
 
 
 # --- 명령 핸들러: 로깅 start/stop ---

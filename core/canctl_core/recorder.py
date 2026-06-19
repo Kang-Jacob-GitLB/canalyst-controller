@@ -1,14 +1,16 @@
-"""CAN 프레임 파일 로깅·재생(replay).
+"""CAN 프레임 파일 로깅·재생(replay)·표준 포맷 내보내기.
 
 - FrameRecorder: rx 프레임을 JSONL(한 줄=한 프레임)로 파일에 기록. write 마다 flush 하여
   크래시 시 유실을 최소화한다.
 - read_frames(): 기록 파일을 읽어 CanFrame 으로 복원하는 제너레이터.
+- export_log(): JSONL 로그를 candump 스타일 CSV 또는 Vector ASC(python-can ASCWriter)로 변환.
 
 이 모듈은 **동기**로 유지한다. 비동기 replay 루프(타이밍 재현)는 server.py 가 구동하며,
 이 모듈은 직렬화/역직렬화와 파일 I/O 만 담당한다(단위 테스트 용이성).
 """
 from __future__ import annotations
 
+import csv
 import json
 from collections.abc import Iterator
 from typing import IO
@@ -78,3 +80,72 @@ def frame_from_dict(d: dict) -> CanFrame:
         dlc=d["dlc"],
         data=[int(b) for b in d["data"]],
     )
+
+
+#: CSV 내보내기 헤더(candump 스타일).
+_CSV_HEADER = ["timestamp", "channel", "can_id", "extended", "rtr", "dlc", "data"]
+
+
+def export_log(src: str, dest: str, format: str) -> int:
+    """JSONL 로그(src)를 표준 포맷(dest)으로 내보내고 내보낸 프레임 수를 반환.
+
+    - format="csv": candump 스타일 CSV. 헤더 + 행(timestamp, channel,
+      can_id(hex), extended, rtr, dlc, data(공백 구분 hex)).
+    - format="asc": python-can can.ASCWriter 로 Vector ASC 작성.
+
+    지원하지 않는 format 은 ValueError. src 미존재 등 I/O 오류는 그대로 전파한다.
+    """
+    if format == "csv":
+        return _export_csv(src, dest)
+    if format == "asc":
+        return _export_asc(src, dest)
+    raise ValueError(f"지원하지 않는 export 포맷: {format!r}")
+
+
+def _export_csv(src: str, dest: str) -> int:
+    """candump 스타일 CSV 로 내보낸다. data 는 공백 구분 2자리 hex."""
+    count = 0
+    # newline='' 는 csv 모듈 권장(중복 개행 방지).
+    with open(dest, "w", encoding="utf-8", newline="") as fp:
+        writer = csv.writer(fp)
+        writer.writerow(_CSV_HEADER)
+        for frame in read_frames(src):
+            writer.writerow([
+                frame.ts,
+                frame.channel,
+                # can_id 는 0x 접두 hex 로 가독성·왕복 모두 확보
+                f"0x{frame.can_id:X}",
+                int(frame.extended),
+                int(frame.rtr),
+                frame.dlc,
+                " ".join(f"{b:02X}" for b in frame.data),
+            ])
+            count += 1
+    return count
+
+
+def _export_asc(src: str, dest: str) -> int:
+    """python-can can.ASCWriter 로 Vector ASC 로 내보낸다.
+
+    각 CanFrame → can.Message 변환 후 writer.on_message_received(msg).
+    with 구문으로 writer 를 닫는다(내부적으로 stop() 호출).
+    """
+    # can 은 ASC 경로에서만 필요하므로 지연 import(미설치 환경에서 csv 경로는 동작).
+    import can
+
+    count = 0
+    with can.ASCWriter(dest) as writer:
+        for frame in read_frames(src):
+            msg = can.Message(
+                timestamp=frame.ts,
+                arbitration_id=frame.can_id,
+                is_extended_id=frame.extended,
+                is_remote_frame=frame.rtr,
+                dlc=frame.dlc,
+                # rtr 프레임은 데이터가 없으므로 빈 bytes
+                data=bytes(frame.data) if not frame.rtr else b"",
+                channel=frame.channel,
+            )
+            writer.on_message_received(msg)
+            count += 1
+    return count

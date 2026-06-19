@@ -9,8 +9,14 @@ from typing import Any
 VALID_COMMANDS = {
     "list_devices", "connect", "disconnect", "send",
     "set_filter", "start_log", "stop_log", "replay", "load_dbc",
-    "list_dbc_messages", "encode_send",
+    "list_dbc_messages", "encode_send", "export_log",
 }
+
+#: 마스크 미지정 시 기본(정확 일치). 32비트 all-ones.
+DEFAULT_MASK = 0xFFFFFFFF
+
+#: export_log 지원 포맷.
+EXPORT_FORMATS = {"asc", "csv"}
 
 
 class ProtocolError(ValueError):
@@ -90,9 +96,31 @@ def make_log_status(logging: bool, path: Any = None) -> str:
     return json.dumps({"type": "log_status", "logging": logging, "path": path})
 
 
-def make_filter(ids: list[int]) -> str:
-    """현재 적용된 수신 필터(허용 CAN ID 목록) 통지. 빈 목록이면 전체 통과."""
-    return json.dumps({"type": "filter", "ids": list(ids)})
+def make_filter(ids: list[int], mask: int | None = None,
+                channel: int | None = None) -> str:
+    """현재 적용된 수신 필터 통지.
+
+    - ids 빈 목록이면 (id 기준) 전체 통과.
+    - mask 가 None 이면 DEFAULT_MASK(all-ones, 정확 일치)로 통지.
+    - channel 이 None 이면 전체 채널(채널 필터 없음).
+    """
+    return json.dumps({
+        "type": "filter",
+        "ids": list(ids),
+        "mask": DEFAULT_MASK if mask is None else mask,
+        "channel": channel,
+    })
+
+
+def make_export_status(ok: bool, path: str, count: int, format: str) -> str:
+    """로그 내보내기 결과 통지(export_log 응답). 요청자에게만 회신."""
+    return json.dumps({
+        "type": "export_status",
+        "ok": ok,
+        "path": path,
+        "count": count,
+        "format": format,
+    })
 
 
 def make_dbc_messages(messages: list[dict]) -> str:
@@ -129,6 +157,19 @@ def parse_command(raw: str) -> dict[str, Any]:
     elif cmd == "set_filter":
         _validate_ids(msg.get("ids", []))
         msg.setdefault("ids", [])
+        # mask/channel 은 optional. 키가 있을 때만 검증하고,
+        # 없으면 server 가 기본 처리하므로 setdefault 하지 않는다.
+        if "mask" in msg:
+            _validate_mask(msg["mask"])
+        if "channel" in msg:
+            _validate_filter_channel(msg["channel"])
+    elif cmd == "export_log":
+        _require_str(msg, "src")
+        _require_str(msg, "dest")
+        _require_str(msg, "format")
+        if msg["format"] not in EXPORT_FORMATS:
+            raise ProtocolError(
+                f"format 은 {sorted(EXPORT_FORMATS)} 중 하나여야 합니다")
     elif cmd == "start_log":
         _require_str(msg, "path")
     elif cmd == "replay":
@@ -184,3 +225,17 @@ def _validate_ids(ids: Any) -> None:
         # bool 은 int 의 서브클래스이므로 명시적으로 거부
         if isinstance(can_id, bool) or not isinstance(can_id, int) or can_id < 0:
             raise ProtocolError("ids 의 각 원소는 0 이상의 정수여야 합니다")
+
+
+def _validate_mask(mask: Any) -> None:
+    # mask=0 은 허용(모든 id 가 모든 프레임 매칭). bool 은 명시적으로 거부.
+    if isinstance(mask, bool) or not isinstance(mask, int) or mask < 0:
+        raise ProtocolError("mask 는 0 이상의 정수여야 합니다")
+
+
+def _validate_filter_channel(channel: Any) -> None:
+    # channel=null(None) 은 전체 채널을 뜻하므로 허용. channel=0 도 유효.
+    if channel is None:
+        return
+    if isinstance(channel, bool) or not isinstance(channel, int) or channel < 0:
+        raise ProtocolError("channel 은 0 이상의 정수 또는 null 이어야 합니다")

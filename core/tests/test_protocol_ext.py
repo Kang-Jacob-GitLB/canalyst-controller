@@ -23,6 +23,31 @@ def test_make_filter():
     msg = json.loads(protocol.make_filter([0x100, 0x200]))
     assert msg["type"] == "filter"
     assert msg["ids"] == [0x100, 0x200]
+    # mask 미지정 시 all-ones(정확 일치), channel 미지정 시 null(전체 채널)
+    assert msg["mask"] == 0xFFFFFFFF
+    assert msg["channel"] is None
+
+
+def test_make_filter_with_mask_and_channel():
+    msg = json.loads(protocol.make_filter([0x100], mask=0x700, channel=0))
+    assert msg["ids"] == [0x100]
+    assert msg["mask"] == 0x700
+    assert msg["channel"] == 0  # channel=0 은 유효값(falsy 아님)
+
+
+def test_make_filter_mask_zero_preserved():
+    # mask=0 은 유효(모든 id 매칭). all-ones 로 대체되면 안 된다.
+    msg = json.loads(protocol.make_filter([0x100], mask=0))
+    assert msg["mask"] == 0
+
+
+def test_make_export_status():
+    msg = json.loads(protocol.make_export_status(True, "out.asc", 5, "asc"))
+    assert msg["type"] == "export_status"
+    assert msg["ok"] is True
+    assert msg["path"] == "out.asc"
+    assert msg["count"] == 5
+    assert msg["format"] == "asc"
 
 
 def test_make_rx_without_decoder_has_no_decoded():
@@ -77,6 +102,45 @@ def test_parse_set_filter_empty_default():
     assert msg["ids"] == []
 
 
+def test_parse_set_filter_with_mask_and_channel():
+    msg = parse_command('{"type":"set_filter","ids":[256],"mask":1792,"channel":0}')
+    assert msg["ids"] == [256]
+    assert msg["mask"] == 1792
+    assert msg["channel"] == 0  # channel=0 허용
+
+
+def test_parse_set_filter_mask_zero_allowed():
+    # mask=0 은 허용(모든 id 매칭). setdefault 하지 않으므로 키 그대로 유지.
+    msg = parse_command('{"type":"set_filter","ids":[256],"mask":0}')
+    assert msg["mask"] == 0
+
+
+def test_parse_set_filter_channel_null_allowed():
+    # channel=null(None) 은 전체 채널을 뜻하며 허용.
+    msg = parse_command('{"type":"set_filter","ids":[256],"channel":null}')
+    assert msg["channel"] is None
+
+
+def test_parse_set_filter_no_mask_channel_keys():
+    # mask/channel 미지정 시 server 가 기본 처리하므로 키를 추가하지 않는다.
+    msg = parse_command('{"type":"set_filter","ids":[256]}')
+    assert "mask" not in msg
+    assert "channel" not in msg
+
+
+def test_parse_export_log():
+    msg = parse_command('{"type":"export_log","src":"a.jsonl","dest":"b.csv","format":"csv"}')
+    assert msg["type"] == "export_log"
+    assert msg["src"] == "a.jsonl"
+    assert msg["dest"] == "b.csv"
+    assert msg["format"] == "csv"
+
+
+def test_parse_export_log_asc():
+    msg = parse_command('{"type":"export_log","src":"a.jsonl","dest":"b.asc","format":"asc"}')
+    assert msg["format"] == "asc"
+
+
 def test_parse_start_log():
     msg = parse_command('{"type":"start_log","path":"log.jsonl"}')
     assert msg["path"] == "log.jsonl"
@@ -101,11 +165,23 @@ def test_parse_load_dbc():
     '{"type":"set_filter","ids":[true]}',             # bool 거부
     '{"type":"set_filter","ids":[-1]}',               # 음수 거부
     '{"type":"set_filter","ids":[1.5]}',              # float 거부
+    '{"type":"set_filter","mask":-1}',                # mask 음수 거부
+    '{"type":"set_filter","mask":true}',              # mask bool 거부
+    '{"type":"set_filter","mask":1.5}',               # mask float 거부
+    '{"type":"set_filter","channel":-1}',             # channel 음수 거부
+    '{"type":"set_filter","channel":true}',           # channel bool 거부
+    '{"type":"set_filter","channel":1.5}',            # channel float 거부
     '{"type":"start_log"}',                            # path 누락
     '{"type":"start_log","path":""}',                 # 빈 path
     '{"type":"start_log","path":123}',                # path 정수
     '{"type":"replay"}',                               # path 누락
     '{"type":"load_dbc"}',                             # path 누락
+    '{"type":"export_log","dest":"b.csv","format":"csv"}',     # src 누락
+    '{"type":"export_log","src":"a.jsonl","format":"csv"}',    # dest 누락
+    '{"type":"export_log","src":"a.jsonl","dest":"b.csv"}',    # format 누락
+    '{"type":"export_log","src":"","dest":"b.csv","format":"csv"}',   # 빈 src
+    '{"type":"export_log","src":"a.jsonl","dest":"b.csv","format":"blf"}',  # blf 미지원
+    '{"type":"export_log","src":"a.jsonl","dest":"b.csv","format":""}',     # 빈 format
 ])
 def test_parse_invalid_ext(raw):
     with pytest.raises(ProtocolError):
