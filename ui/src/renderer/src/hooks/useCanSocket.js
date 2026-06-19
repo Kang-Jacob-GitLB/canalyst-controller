@@ -21,7 +21,9 @@ export function useCanSocket(url) {
   const [frames, setFrames] = useState([])
   const [error, setError] = useState(null)
   const [filterIds, setFilterIds] = useState(null) // null=미통지, []=전체통과
+  const [filterMeta, setFilterMeta] = useState(null) // null=미통지, {mask,channel}(mask 없으면 정확일치, channel null 이면 전체)
   const [logStatus, setLogStatus] = useState(null) // null=미통지, {logging,path}
+  const [exportStatus, setExportStatus] = useState(null) // null=미통지, {ok,path,count,format}
   const [stats, setStats] = useState(EMPTY_STATS) // 누적 수신 통계(frames 와 독립)
   const [dbcMessages, setDbcMessages] = useState([]) // 로드된 DBC 메시지 정의 목록
 
@@ -84,9 +86,14 @@ export function useCanSocket(url) {
         }
         case 'filter':
           setFilterIds(msg.ids)
+          // mask/channel 부가 메타(코어가 같이 통지). mask 없으면 정확일치, channel null 이면 전체.
+          setFilterMeta({ mask: msg.mask, channel: msg.channel ?? null })
           break
         case 'log_status':
           setLogStatus({ logging: msg.logging, path: msg.path })
+          break
+        case 'export_status':
+          setExportStatus({ ok: msg.ok, path: msg.path, count: msg.count, format: msg.format })
           break
         case 'dbc_messages':
           setDbcMessages(msg.messages)
@@ -126,11 +133,26 @@ export function useCanSocket(url) {
   }, [])
 
   // 필터/로깅/DBC 명령(core 가 결과를 filter·log_status 이벤트나 error 로 통지)
-  const setFilter = useCallback((ids) => send({ type: 'set_filter', ids }), [send])
+  // mask/channel 이 null·undefined 면 해당 키를 빼고 보낸다(코어 기본값·하위호환 유지).
+  // channel=0·mask=0 은 유효값이므로 truthiness 가 아닌 != null 로 판정한다.
+  const setFilter = useCallback(
+    (ids, mask, channel) => {
+      const obj = { type: 'set_filter', ids }
+      if (mask != null) obj.mask = mask
+      if (channel != null) obj.channel = channel
+      send(obj)
+    },
+    [send]
+  )
   const startLog = useCallback((path) => send({ type: 'start_log', path }), [send])
   const stopLog = useCallback(() => send({ type: 'stop_log' }), [send])
   const replay = useCallback((path) => send({ type: 'replay', path }), [send])
   const loadDbc = useCallback((path) => send({ type: 'load_dbc', path }), [send])
+  // 로그 내보내기: 기록된 src(jsonl)를 dest 로 asc/csv 표준 포맷 변환(코어가 export_status 나 error 로 통지).
+  const exportLog = useCallback(
+    (src, dest, format) => send({ type: 'export_log', src, dest, format }),
+    [send]
+  )
   // DBC 송신: 메시지 정의 목록 요청 / 신호값 인코딩 후 송신.
   // (코어가 dbc_messages 이벤트나 error 로 통지하고, 송신 프레임은 rx 에코로 돌아온다)
   const listDbcMessages = useCallback(() => send({ type: 'list_dbc_messages' }), [send])
@@ -146,7 +168,9 @@ export function useCanSocket(url) {
     frames,
     error,
     filterIds,
+    filterMeta,
     logStatus,
+    exportStatus,
     stats,
     dbcMessages,
     connect,
@@ -157,6 +181,7 @@ export function useCanSocket(url) {
     clearError,
     resetStats,
     setFilter,
+    exportLog,
     startLog,
     stopLog,
     replay,

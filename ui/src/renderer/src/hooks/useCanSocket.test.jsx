@@ -227,4 +227,92 @@ describe('useCanSocket', () => {
     act(() => ws._message({ type: 'log_status', logging: true, path: '/tmp/a.log' }))
     expect(result.current.logStatus).toEqual({ logging: true, path: '/tmp/a.log' })
   })
+
+  it('setFilter 는 mask·channel 이 주어지면 키를 포함해 전송한다(channel=0·mask=0 유효값)', () => {
+    const { result } = renderHook(() => useCanSocket('ws://x'))
+    const ws = FakeWebSocket.last
+    act(() => ws._open()) // sent[0]=list_devices
+
+    act(() => result.current.setFilter([0x100], 0x7ff, 0)) // channel 0 은 유효 → 포함
+    act(() => result.current.setFilter([0x200], 0, 1)) // mask 0 은 유효 → 포함
+
+    const sent = ws.sent.slice(1).map((s) => JSON.parse(s))
+    expect(sent).toEqual([
+      { type: 'set_filter', ids: [0x100], mask: 0x7ff, channel: 0 },
+      { type: 'set_filter', ids: [0x200], mask: 0, channel: 1 }
+    ])
+  })
+
+  it('setFilter 는 mask·channel 이 null·undefined 면 해당 키를 빼고 전송한다(하위호환)', () => {
+    const { result } = renderHook(() => useCanSocket('ws://x'))
+    const ws = FakeWebSocket.last
+    act(() => ws._open()) // sent[0]=list_devices
+
+    act(() => result.current.setFilter([0x100])) // mask·channel 미지정
+    act(() => result.current.setFilter([0x200], undefined, null)) // 둘 다 생략 의도
+    act(() => result.current.setFilter([0x300], 0x1ff, null)) // channel 만 전체
+
+    const sent = ws.sent.slice(1).map((s) => JSON.parse(s))
+    expect(sent).toEqual([
+      { type: 'set_filter', ids: [0x100] },
+      { type: 'set_filter', ids: [0x200] },
+      { type: 'set_filter', ids: [0x300], mask: 0x1ff }
+    ])
+  })
+
+  it('exportLog 명령을 프로토콜 형식으로 전송한다', () => {
+    const { result } = renderHook(() => useCanSocket('ws://x'))
+    const ws = FakeWebSocket.last
+    act(() => ws._open()) // sent[0]=list_devices
+
+    act(() => result.current.exportLog('C:\\logs\\can.jsonl', 'C:\\logs\\can.asc', 'asc'))
+
+    expect(JSON.parse(ws.sent[1])).toEqual({
+      type: 'export_log',
+      src: 'C:\\logs\\can.jsonl',
+      dest: 'C:\\logs\\can.asc',
+      format: 'asc'
+    })
+  })
+
+  it('filter 이벤트의 mask·channel 을 filterMeta 로 디스패치한다', () => {
+    const { result } = renderHook(() => useCanSocket('ws://x'))
+    const ws = FakeWebSocket.last
+    act(() => ws._open())
+
+    expect(result.current.filterMeta).toBeNull() // 미통지 초기값
+
+    // mask 있음 + channel 0(유효값)
+    act(() => ws._message({ type: 'filter', ids: [0x100], mask: 0x7ff, channel: 0 }))
+    expect(result.current.filterIds).toEqual([0x100])
+    expect(result.current.filterMeta).toEqual({ mask: 0x7ff, channel: 0 })
+
+    // mask 없음(정확일치) + channel 없음(전체 → null)
+    act(() => ws._message({ type: 'filter', ids: [] }))
+    expect(result.current.filterMeta).toEqual({ mask: undefined, channel: null })
+  })
+
+  it('export_status 이벤트를 exportStatus 로 디스패치한다', () => {
+    const { result } = renderHook(() => useCanSocket('ws://x'))
+    const ws = FakeWebSocket.last
+    act(() => ws._open())
+
+    expect(result.current.exportStatus).toBeNull() // 미통지 초기값
+
+    act(() =>
+      ws._message({
+        type: 'export_status',
+        ok: true,
+        path: 'C:\\logs\\can.asc',
+        count: 42,
+        format: 'asc'
+      })
+    )
+    expect(result.current.exportStatus).toEqual({
+      ok: true,
+      path: 'C:\\logs\\can.asc',
+      count: 42,
+      format: 'asc'
+    })
+  })
 })
