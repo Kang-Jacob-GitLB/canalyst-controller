@@ -81,7 +81,7 @@ ipcMain.handle('pick-save-file', async (_event, options = {}) => {
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1100,
-    height: 720,
+    height: 900,
     title: 'CANalyst-II Controller',
     backgroundColor: '#1e1e1e',
     webPreferences: {
