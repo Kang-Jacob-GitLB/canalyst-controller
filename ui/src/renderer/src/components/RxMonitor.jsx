@@ -43,7 +43,20 @@ function matchesQuery(frame, query) {
   return dataHex.includes(q)
 }
 
-export default function RxMonitor({ frames, onClear }) {
+// 로그뷰 프레임을 TxPanel.buildFrame 입력과 정확히 왕복되는 객체로 변환한다.
+// canId 는 "0x" 없는 hex 문자열(fmtId 에서 접두 제거), dataStr 은 공백 구분 hex 바이트.
+// channel/extended/rtr 은 프레임에서 그대로 가져온다.
+function frameToTxFields(f) {
+  return {
+    canId: fmtId(f.can_id, f.extended).replace(/^0x/, ''),
+    channel: f.channel,
+    extended: !!f.extended,
+    rtr: !!f.rtr,
+    dataStr: fmtData(f.data)
+  }
+}
+
+export default function RxMonitor({ frames, onClear, onUseFrame }) {
   // 일시정지: 켜면 그 시점 frames 를 스냅샷으로 고정하고 표시·자동스크롤을 멈춘다.
   // 끄면 라이브 frames 로 복귀. frames 누적 자체는 백그라운드에서 계속된다.
   const [paused, setPaused] = useState(false)
@@ -220,7 +233,11 @@ export default function RxMonitor({ frames, onClear }) {
                 const dir = f.dir === 'tx' ? 'tx' : 'rx'
                 return (
                   <Fragment key={f._seq}>
-                    <tr className={`frame-${dir}`}>
+                    <tr
+                      className={`frame-${dir}`}
+                      onDoubleClick={onUseFrame ? () => onUseFrame(frameToTxFields(f)) : undefined}
+                      title={onUseFrame ? '더블클릭하면 이 프레임으로 송신 폼을 채웁니다' : undefined}
+                    >
                       <td className="mono">{fmtElapsed(f.ts, t0)}</td>
                       <td>
                         <span className={`dir-badge dir-${dir}`}>{dir === 'tx' ? 'TX' : 'RX'}</span>

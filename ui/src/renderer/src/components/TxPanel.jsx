@@ -24,7 +24,7 @@ function buildFrame({ canId, channel, extended, rtr, dataStr }) {
   return { frame: { channel, can_id: id, extended, rtr, data: rtr ? [] : bytes } }
 }
 
-export default function TxPanel({ status, onSend }) {
+export default function TxPanel({ status, onSend, prefill }) {
   const [canId, setCanId] = usePersistentState('canctl.tx.canId', '123')
   const [channel, setChannel] = usePersistentState('canctl.tx.channel', 0)
   const [extended, setExtended] = usePersistentState('canctl.tx.extended', false)
@@ -40,6 +40,7 @@ export default function TxPanel({ status, onSend }) {
   // 송신 프리셋: 폼 원시값 묶음을 이름과 함께 저장(localStorage 영속)
   const [presets, setPresets] = usePersistentState('canctl.tx.presets', [])
   const [presetName, setPresetName] = useState('')
+  const fileInputRef = useRef(null) // 프리셋 가져오기용 숨김 file input
 
   const connected = !!status?.connected
 
@@ -97,6 +98,21 @@ export default function TxPanel({ status, onSend }) {
     return () => clearInterval(t)
   }, [periodic, connected, periodMs])
 
+  // 모니터 행 더블클릭 등으로 외부에서 폼을 채운다(prefill). 새 prefill 객체가
+  // 올 때만 폼 필드를 덮어쓴다. 참조 동등성이 같은 객체의 재적용을 막으므로
+  // 별도 식별자 추적은 필요 없다. prefill 이 없을 때(초기 마운트 포함)는 아무것도
+  // 하지 않아 usePersistentState 로 복원된 기본값을 지우지 않는다.
+  useEffect(() => {
+    if (!prefill) return
+    setCanId(prefill.canId)
+    setChannel(prefill.channel)
+    setExtended(prefill.extended)
+    setRtr(prefill.rtr)
+    setDataStr(prefill.dataStr)
+    setErr(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill])
+
   // 현재 폼 원시값을 이름 붙여 프리셋으로 저장한다(동일 이름은 덮어쓴다).
   function savePreset() {
     const name = presetName.trim()
@@ -125,6 +141,64 @@ export default function TxPanel({ status, onSend }) {
 
   function deletePreset(name) {
     setPresets((prev) => prev.filter((p) => p.name !== name))
+  }
+
+  // 프리셋 1개가 올바른 구조({name, canId, channel, extended, rtr, dataStr})인지 검증.
+  // 가져오기에서 잘못된 파일을 거르는 데 쓴다.
+  function isValidPreset(p) {
+    return (
+      p &&
+      typeof p === 'object' &&
+      typeof p.name === 'string' &&
+      typeof p.canId === 'string' &&
+      typeof p.channel === 'number' &&
+      typeof p.extended === 'boolean' &&
+      typeof p.rtr === 'boolean' &&
+      typeof p.dataStr === 'string'
+    )
+  }
+
+  // 현재 프리셋 배열을 JSON 파일로 내보낸다(Blob + 숨김 <a download> 클릭).
+  function exportPresets() {
+    const json = JSON.stringify(presets, null, 2)
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'presets.json'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  // 숨김 file input 의 변경 이벤트: 선택한 JSON 파일을 읽어 프리셋 배열을 검증·병합한다.
+  // 동일 이름은 가져온 값으로 덮어쓴다. 파싱 실패·형식 오류는 오류 메시지로 표시한다.
+  function importPresets(e) {
+    const file = e.target.files && e.target.files[0]
+    // 같은 파일을 다시 선택해도 change 가 발생하도록 input 값을 비운다.
+    e.target.value = ''
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result)
+        if (!Array.isArray(parsed) || !parsed.every(isValidPreset)) {
+          setErr('프리셋 파일 형식이 올바르지 않습니다')
+          return
+        }
+        setErr(null)
+        setPresets((prev) => {
+          const names = new Set(parsed.map((p) => p.name))
+          const kept = prev.filter((p) => !names.has(p.name)) // 동일 이름은 가져온 값으로 대체
+          return [...kept, ...parsed]
+        })
+      } catch {
+        setErr('프리셋 파일을 읽을 수 없습니다 (JSON 파싱 오류)')
+      }
+    }
+    reader.onerror = () => setErr('프리셋 파일을 읽을 수 없습니다')
+    reader.readAsText(file)
   }
 
   return (
@@ -196,7 +270,7 @@ export default function TxPanel({ status, onSend }) {
         )}
       </div>
 
-      {/* 송신 프리셋: 현재 폼을 이름 붙여 저장 / 로드 / 재전송 / 삭제 */}
+      {/* 송신 프리셋: 현재 폼을 이름 붙여 저장 / 로드 / 재전송 / 삭제 / import·export */}
       <div className="tx-row">
         <label className="grow">
           프리셋 이름
@@ -209,6 +283,23 @@ export default function TxPanel({ status, onSend }) {
         <button type="button" onClick={savePreset}>
           프리셋 저장
         </button>
+      </div>
+
+      {/* 프리셋 묶음 import/export: 내보내기는 즉시 다운로드, 가져오기는 숨김 file input 트리거 */}
+      <div className="tx-row">
+        <button type="button" onClick={exportPresets} disabled={presets.length === 0}>
+          프리셋 내보내기
+        </button>
+        <button type="button" onClick={() => fileInputRef.current?.click()}>
+          프리셋 가져오기
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json,application/json"
+          onChange={importPresets}
+          style={{ display: 'none' }}
+        />
       </div>
 
       {presets.length > 0 && (
