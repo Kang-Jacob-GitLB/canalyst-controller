@@ -302,3 +302,49 @@ code {
   padding: 2px 6px;
   border-radius: 4px;
 }
+
+/* 모니터 툴바: 검색 / 일시정지 / 집계 / 표시상한 / CSV / 지우기 */
+.rx-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.rx-toolbar button,
+.rx-toolbar input,
+.rx-toolbar select {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+}
+.rx-search {
+  min-width: 150px;
+}
+/* 표시 상한 라벨(텍스트 + 셀렉트 가로 정렬) */
+.rx-limit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: #aaa;
+}
+/* 토글 버튼(일시정지·집계) 활성 상태 강조 */
+.rx-toolbar button[aria-pressed='true'] {
+  background: #0e639c;
+  border-color: #0e639c;
+}
+/* 일시정지 표식 */
+.rx-paused {
+  color: #ffd479;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* 수신 통계 패널 */
+.stats-panel .panel-header {
+  margin-bottom: 4px;
+}
+.stats-byid table th,
+.stats-byid table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid #333;
+}
