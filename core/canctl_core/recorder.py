@@ -111,7 +111,8 @@ def _export_csv(src: str, dest: str) -> int:
         writer.writerow(_CSV_HEADER)
         for frame in read_frames(src):
             writer.writerow([
-                frame.ts,
+                # 시간값은 ms(소수점 3자리)까지만 — UI CSV 내보내기와 정밀도를 맞춘다.
+                f"{frame.ts:.3f}",
                 frame.channel,
                 # can_id 는 0x 접두 hex 로 가독성·왕복 모두 확보
                 f"0x{frame.can_id:X}",

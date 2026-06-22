@@ -4,10 +4,17 @@ USB 폴링은 python-can 의 CANalystIIBus.recv(timeout=0) 가 처리하며(한 
 poll() 은 그 큐를 비블로킹으로 드레인한다.
 
 주의: canalystii 는 펌웨어/프로토콜 한계로 송신 ACK·버스에러 보고를 지원하지 않는다.
+
+타임스탬프: python-can/canalystii 가 주는 msg.timestamp 는 장비 내부 카운터
+(100us 단위를 초로 환산한 값)이지 wall-clock 이 아니다. 반면 송신 프레임은
+server 에서 time.time()(epoch)으로 찍힌다. 두 기준이 섞이면 수신 중 송신할 때
+TX 시간이 엉뚱하게 표시되므로(첫 프레임 ts 를 t0 로 앵커링하는 UI 기준), poll()
+에서 장비 카운터를 epoch 로 정규화해 CanFrame.ts 계약(항상 epoch 초)을 지킨다.
 """
 from __future__ import annotations
 
 import logging
+import time
 
 from .backend import CanBackend
 from .protocol import CanFrame
@@ -46,6 +53,9 @@ class CanalystIIBackend(CanBackend):
     def __init__(self) -> None:
         self._bus = None
         self._channel = 0
+        # 채널별 (epoch - 장비카운터) 오프셋. 첫 프레임에서 채널마다 한 번 잡는다.
+        # 채널이 카운터를 공유하든 독립이든 채널별로 보정하므로 항상 맞는다.
+        self._ts_offset: dict[int, float] = {}
 
     @property
     def connected(self) -> bool:
@@ -69,6 +79,9 @@ class CanalystIIBackend(CanBackend):
         # (channel 인자는 프로토콜 호환을 위해 받지만 채널 선택에는 쓰지 않는다.
         #  두 채널 모두 connect 의 bitrate 로 초기화된다.)
         self._channel = channel
+        # 장비/채널 재시작 시 카운터가 0부터 다시 시작하므로 오프셋을 비운다.
+        # (첫 프레임에서 재계산)
+        self._ts_offset = {}
         self._bus = can.Bus(
             interface="canalystii",
             channel=(0, 1),
@@ -110,9 +123,16 @@ class CanalystIIBackend(CanBackend):
             msg = bus.recv(timeout=0)
             if msg is None:
                 break
+            channel = msg.channel if msg.channel is not None else self._channel
+            # 장비 카운터를 epoch 로 정규화한다. 채널마다 첫 프레임에서
+            # offset(=현재 epoch - 장비 ts)을 한 번 잡고, 이후엔 그 offset 을
+            # 더해 프레임 간 상대 간격은 그대로 보존한다(레이트 계산 정확).
+            if channel not in self._ts_offset:
+                self._ts_offset[channel] = time.time() - msg.timestamp
+            ts = msg.timestamp + self._ts_offset[channel]
             frames.append(CanFrame(
-                ts=msg.timestamp,
-                channel=msg.channel if msg.channel is not None else self._channel,
+                ts=ts,
+                channel=channel,
                 can_id=msg.arbitration_id,
                 extended=bool(msg.is_extended_id),
                 rtr=bool(msg.is_remote_frame),

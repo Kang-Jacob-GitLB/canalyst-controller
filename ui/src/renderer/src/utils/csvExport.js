@@ -36,7 +36,8 @@ export function framesToCsv(frames) {
   for (const f of frames) {
     const dir = f.dir === 'tx' ? 'tx' : 'rx'
     const row = [
-      f.ts,
+      // 시간값은 ms(소수점 3자리)까지만 — epoch 부동소수의 잔여 자리수를 잘라 화면 표시와 맞춘다.
+      Number(f.ts).toFixed(3),
       dir,
       f.channel,
       fmtId(f.can_id, f.extended),

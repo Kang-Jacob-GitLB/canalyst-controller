@@ -125,7 +125,8 @@ def test_export_log_csv_roundtrip(tmp_path):
                        "rtr", "dlc", "data"]
     assert len(rows) == 4
 
-    # CSV 는 ts 까지 완전 왕복 가능(ASC 와 달리 절대 timestamp 보존)
+    # CSV 는 ts 를 ms(소수점 3자리) 정밀도로 왕복(ASC 와 달리 절대 timestamp 보존).
+    # 샘플 ts 가 3자리 이내라 등가 비교가 성립한다.
     orig = _sample_frames()
     for row, frame in zip(rows[1:], orig):
         assert float(row[0]) == frame.ts

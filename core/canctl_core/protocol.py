@@ -27,7 +27,8 @@ class ProtocolError(ValueError):
 class CanFrame:
     """단일 CAN 프레임. data는 0..8개의 0..255 정수."""
 
-    ts: float
+    ts: float  # wall-clock epoch 초(Unix time). 모든 backend·송신경로가 동일 기준을 지켜야
+    #           수신/송신 프레임을 한 타임라인에서 비교·표시할 수 있다.
     channel: int
     can_id: int
     extended: bool
