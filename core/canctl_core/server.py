@@ -7,6 +7,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import signal
+import sys
+import threading
 import time
 
 import websockets
@@ -39,21 +42,79 @@ class CanServer:
         self._recorder = FrameRecorder()        # rx 파일 로깅
         self._decoder = DbcDecoder()            # DBC 신호 디코딩
         self._replay_task: asyncio.Task | None = None  # 진행 중인 replay
+        self._stop: asyncio.Event | None = None  # 종료 트리거(run_forever 안에서 생성)
 
     async def run_forever(self) -> None:
         self._running = True
+        loop = asyncio.get_running_loop()
+        self._stop = asyncio.Event()
+        # 부모(Electron)가 종료/크래시하면 stdin 이 EOF 가 되고, 그때 graceful
+        # 종료해 장비 연결을 해제하고 프로세스가 orphan 으로 남지 않게 한다.
+        # SIGINT/SIGTERM(개발 터미널 Ctrl-C 등)도 같은 stop 으로 수렴시킨다.
+        self._install_signal_handlers(loop)
+        self._start_stdin_watcher(loop)
         poll_task = asyncio.create_task(self._broadcast_loop())
         try:
             async with websockets.serve(self._handler, self._host, self._port):
                 log.info("WebSocket 서버 시작: ws://%s:%d (backend=%s)",
                          self._host, self._port, self._backend.name)
-                await asyncio.Future()  # 영구 대기 (취소될 때까지)
+                await self._stop.wait()  # 종료 신호(stop)까지 대기
         finally:
             self._running = False
             poll_task.cancel()
             if self._replay_task is not None:
                 self._replay_task.cancel()
             self._recorder.stop()  # 열려있던 로그 파일 확실히 닫기
+            # 장비 연결을 확실히 해제(USB/버스 핸들 반환). mock·canalystii 공통.
+            try:
+                self._backend.disconnect()
+            except Exception:
+                log.exception("종료 중 백엔드 disconnect 실패")
+
+    def _install_signal_handlers(self, loop: asyncio.AbstractEventLoop) -> None:
+        """SIGINT/SIGTERM 을 stop 트리거로 연결한다.
+
+        Windows 의 asyncio 루프는 add_signal_handler 를 지원하지 않으므로
+        (NotImplementedError) signal.signal 로 폴백한다. signal.signal 은
+        메인 스레드에서만 등록 가능하며 run_forever 는 메인 스레드에서 돈다.
+        """
+        def trigger() -> None:
+            if self._stop is not None:
+                self._stop.set()
+
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            try:
+                loop.add_signal_handler(sig, trigger)
+            except (NotImplementedError, RuntimeError, ValueError, AttributeError):
+                try:
+                    signal.signal(sig, lambda *_: loop.call_soon_threadsafe(trigger))
+                except (ValueError, OSError):
+                    pass  # 등록 불가 환경(서브스레드 등)은 stdin EOF 에 의존
+
+    def _start_stdin_watcher(self, loop: asyncio.AbstractEventLoop) -> None:
+        """stdin 을 블로킹 읽기로 감시하다 EOF 면 stop 을 트리거한다.
+
+        Electron 이 사이드카 stdin 을 pipe 로 열어 두므로, 부모가 stdin.end()
+        하거나 부모 프로세스가 사라지면(정상 종료·크래시·HMR 재시작) read 가
+        EOF(b"") 를 돌려준다 → 코어가 스스로 graceful 종료한다. 플랫폼/시그널
+        과 무관하게 동작하는 가장 견고한 종료 경로다. 터미널에서 직접 실행한
+        경우엔 EOF 가 오지 않으므로 데몬 스레드로 두어 블로킹이 무해하다.
+        """
+        stream = getattr(sys.stdin, "buffer", None)
+        if stream is None:
+            return  # stdin 이 없는 환경(예: 완전 분리 실행)은 시그널에 의존
+
+        def watch() -> None:
+            try:
+                while True:
+                    if stream.read(1) == b"":
+                        break  # EOF → 부모 종료
+            except Exception:
+                pass  # 파이프 오류 등도 종료로 간주
+            loop.call_soon_threadsafe(
+                lambda: self._stop.set() if self._stop is not None else None)
+
+        threading.Thread(target=watch, daemon=True, name="stdin-eof-watch").start()
 
     async def _handler(self, ws) -> None:
         self._clients.add(ws)
