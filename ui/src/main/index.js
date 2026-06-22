@@ -1,9 +1,14 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
-import { spawn } from 'child_process'
+import { spawn, execFileSync } from 'child_process'
 
 const CORE_PORT = 8765
+//: 종료 시 코어가 stdin EOF 를 받고 스스로 graceful 종료(장비 해제)할 때까지 기다리는 시간(ms).
+//  이 안에 안 죽으면 프로세스 트리를 강제 종료한다.
+const CORE_SHUTDOWN_TIMEOUT_MS = 2000
 let coreProc = null
+let coreExited = false  // 코어가 이미 종료됐는지(중복 kill 방지)
+let quitting = false    // before-quit graceful 시퀀스 재진입 방지
 let mainWindow = null
 
 /**
@@ -38,26 +43,48 @@ function startCore() {
     args = ['-m', 'canctl_core', ...coreArgs]
   }
 
+  coreExited = false
   coreProc = spawn(command, args, {
     cwd,
     // 콘솔 앱인 코어를 spawn 할 때 별도 콘솔 창이 뜨지 않게 한다.
     windowsHide: true,
-    // 패키징 모드는 콘솔 출력을 버려 창을 띄우지 않고, 개발 모드는 터미널 로그를 유지.
-    stdio: app.isPackaged ? 'ignore' : 'inherit',
+    // stdin 은 항상 pipe 로 연다: 종료 시 stdin.end() 로 EOF 를 주면 코어가
+    // 스스로 graceful 종료(장비 해제)한다. Electron 이 크래시해도 파이프가
+    // 닫히며 EOF 가 전달되어 코어가 orphan 으로 남지 않는다.
+    // stdout/stderr 는 패키징 시 버리고(창 방지), 개발 시 터미널 로그 유지.
+    stdio: app.isPackaged ? ['pipe', 'ignore', 'ignore'] : ['pipe', 'inherit', 'inherit'],
     // 코어 한글 로그가 콘솔에서 깨지지 않도록 UTF-8 강제
     env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' }
   })
   coreProc.on('error', (err) => console.error('[core] spawn 실패:', err))
   coreProc.on('exit', (code) => {
     console.log('[core] 종료 코드:', code)
+    coreExited = true
     coreProc = null
   })
 }
 
-function stopCore() {
-  if (coreProc) {
-    coreProc.kill()
-    coreProc = null
+/**
+ * 코어 프로세스 트리를 강제 종료한다(best-effort, 동기).
+ * Windows: taskkill /T 로 자식까지(특히 PyInstaller onefile 의 bootloader→child).
+ *          coreProc.kill() 은 부모만 죽여 child 가 orphan 으로 남으므로 쓰지 않는다.
+ * 그 외 플랫폼: SIGKILL.
+ */
+function forceKillCoreTree() {
+  const proc = coreProc
+  if (!proc || coreExited) return
+  if (process.platform === 'win32') {
+    try {
+      execFileSync('taskkill', ['/PID', String(proc.pid), '/T', '/F'], {
+        windowsHide: true,
+        stdio: 'ignore'
+      })
+    } catch {
+      // 이미 죽었거나 권한 문제 — 마지막 수단으로 직접 kill 시도
+      try { proc.kill('SIGKILL') } catch { /* noop */ }
+    }
+  } else {
+    try { proc.kill('SIGKILL') } catch { /* noop */ }
   }
 }
 
@@ -111,10 +138,37 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
-  stopCore()
   if (process.platform !== 'darwin') app.quit()
 })
 
-// 앱 종료 시 사이드카가 orphan 으로 남지 않도록 확실히 종료
-app.on('quit', stopCore)
-app.on('before-quit', stopCore)
+// 앱 종료 시퀀스(여기 한 곳으로 모은다):
+// 1) stdin 을 닫아 코어가 stdin EOF 로 graceful 종료(장비 disconnect)하게 유도
+// 2) 타임아웃 안에 안 죽으면 프로세스 트리를 강제 종료
+// 3) 코어가 종료되면 app.quit() 재호출로 실제 종료 진행
+app.on('before-quit', (event) => {
+  if (quitting || coreExited || !coreProc) return  // 이미 처리 중/종료됨 → 통과
+  quitting = true
+  event.preventDefault()  // 코어 정리가 끝날 때까지 종료 보류
+
+  const proc = coreProc
+  let timer = null
+  const finish = () => {
+    if (timer) clearTimeout(timer)
+    proc.removeListener('exit', finish)
+    app.quit()  // quitting 가드로 이 핸들러는 다시 타지 않는다
+  }
+  proc.once('exit', finish)
+
+  // graceful: stdin 을 닫아 EOF 전달 → 코어가 스스로 disconnect 후 종료
+  try { proc.stdin && proc.stdin.end() } catch { /* noop */ }
+
+  // 타임아웃 안에 graceful 종료가 안 되면 트리 강제 종료
+  timer = setTimeout(() => {
+    timer = null
+    forceKillCoreTree()
+    finish()
+  }, CORE_SHUTDOWN_TIMEOUT_MS)
+})
+
+// 최후 안전망: 위 시퀀스를 거치지 않은 경로로 종료되더라도 동기 강제 종료.
+app.on('quit', forceKillCoreTree)
