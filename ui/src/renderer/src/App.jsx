@@ -29,6 +29,7 @@ export default function App() {
     devices,
     frames,
     error,
+    errorSeq,
     filterIds,
     logStatus,
     stats,
@@ -99,9 +100,23 @@ export default function App() {
       {/* 메인: 송수신 모니터(주인공, 전체 높이) + 우측 컨트롤 레일(독립 스크롤) */}
       <main className="main">
         {error && (
-          <p className="app-error" onClick={clearError} title="클릭하여 닫기">
-            오류: {error}
-          </p>
+          // key={errorSeq}: 새 에러(같은 메시지여도)마다 재마운트되어 enter 애니메이션을
+          // 다시 실행 → 사용자가 "새 에러 발생"을 인지한다. role="alert"로 재안내도 함께.
+          <div key={errorSeq} className="app-error" role="alert">
+            <span className="app-error-text">오류: {error}</span>
+            <button
+              type="button"
+              className="app-error-close"
+              onClick={clearError}
+              title="닫기"
+              aria-label="오류 닫기"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
         )}
 
         <div className="console">

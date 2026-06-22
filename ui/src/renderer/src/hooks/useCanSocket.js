@@ -20,6 +20,9 @@ export function useCanSocket(url) {
   const [devices, setDevices] = useState([])
   const [frames, setFrames] = useState([])
   const [error, setError] = useState(null)
+  // 에러 갱신 일련번호: 같은 메시지가 다시 와도 증가시켜 UI가 "새 에러"로 인지하게 한다.
+  // (case 'error' 에서만 증가 — 프레임 배치 등 무관한 리렌더에서는 안정적으로 유지)
+  const [errorSeq, setErrorSeq] = useState(0)
   const [filterIds, setFilterIds] = useState(null) // null=미통지, []=전체통과
   const [filterMeta, setFilterMeta] = useState(null) // null=미통지, {mask,channel}(mask 없으면 정확일치, channel null 이면 전체)
   const [logStatus, setLogStatus] = useState(null) // null=미통지, {logging,path}
@@ -100,6 +103,7 @@ export function useCanSocket(url) {
           break
         case 'error':
           setError(msg.message)
+          setErrorSeq((n) => n + 1)
           break
         default:
           break
@@ -167,6 +171,7 @@ export function useCanSocket(url) {
     devices,
     frames,
     error,
+    errorSeq,
     filterIds,
     filterMeta,
     logStatus,

@@ -126,6 +126,19 @@ describe('useCanSocket', () => {
     expect(result.current.error).toBeNull()
   })
 
+  it('errorSeq 는 같은 메시지가 또 와도 매 error 마다 증가한다(새 에러로 인지)', () => {
+    const { result } = renderHook(() => useCanSocket('ws://x'))
+    const ws = FakeWebSocket.last
+    act(() => ws._open())
+
+    expect(result.current.errorSeq).toBe(0)
+    act(() => ws._message({ type: 'error', message: '같은 에러' }))
+    expect(result.current.errorSeq).toBe(1)
+    // 동일 메시지여도 seq 가 증가해야 UI 가 "또 났다"를 인지할 수 있다
+    act(() => ws._message({ type: 'error', message: '같은 에러' }))
+    expect(result.current.errorSeq).toBe(2)
+  })
+
   it('connect 는 OPEN 상태에서 connect 명령을 전송한다', () => {
     const { result } = renderHook(() => useCanSocket('ws://x'))
     const ws = FakeWebSocket.last
