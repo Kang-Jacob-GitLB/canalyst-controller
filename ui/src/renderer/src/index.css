@@ -804,6 +804,30 @@ button:focus-visible {
   font-size: 0.74rem;
 }
 
+/* 프리셋 덮어쓰기/전체교체 확인 배너 — 되돌릴 수 없는 작업이라 경고색 강조 */
+.tx-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  background: rgba(255, 164, 43, 0.13);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  box-shadow: inset 0 0 0 1px var(--warning);
+}
+.tx-confirm-msg {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-near);
+  min-width: 0;
+}
+.tx-confirm-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
 /* DBC 신호 입력의 범위/단위 힌트 */
 .dbc-signals {
   display: flex;
