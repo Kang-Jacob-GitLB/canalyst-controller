@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { spawn, execFileSync } from 'child_process'
+import { loadWindowState, saveWindowState, isWithinDisplay } from './windowState'
 
 const CORE_PORT = 8765
 //: 종료 시 코어가 stdin EOF 를 받고 스스로 graceful 종료(장비 해제)할 때까지 기다리는 시간(ms).
@@ -106,9 +107,14 @@ ipcMain.handle('pick-save-file', async (_event, options = {}) => {
 })
 
 function createWindow() {
+  // 이전 세션의 창 상태를 복원. 위치는 현재 디스플레이 안일 때만 적용한다.
+  const state = loadWindowState()
+  const useStoredPosition = isWithinDisplay(state)
+
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 900,
+    width: state.width,
+    height: state.height,
+    ...(useStoredPosition ? { x: state.x, y: state.y } : {}),
     minWidth: 1000,
     minHeight: 600,
     title: 'CANalyst-II Controller',
@@ -121,6 +127,13 @@ function createWindow() {
       sandbox: false
     }
   })
+
+  // 이전 세션이 최대화/전체화면이었으면 그대로 복원.
+  if (state.isMaximized) mainWindow.maximize()
+  if (state.isFullScreen) mainWindow.setFullScreen(true)
+
+  // 창이 닫히기 직전 현재 크기·위치·상태를 저장(종료 후 재실행 시 복원).
+  mainWindow.on('close', () => saveWindowState(mainWindow))
 
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
