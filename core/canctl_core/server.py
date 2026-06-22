@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import signal
 import sys
 import threading
@@ -97,19 +98,36 @@ class CanServer:
         Electron 이 사이드카 stdin 을 pipe 로 열어 두므로, 부모가 stdin.end()
         하거나 부모 프로세스가 사라지면(정상 종료·크래시·HMR 재시작) read 가
         EOF(b"") 를 돌려준다 → 코어가 스스로 graceful 종료한다. 플랫폼/시그널
-        과 무관하게 동작하는 가장 견고한 종료 경로다. 터미널에서 직접 실행한
-        경우엔 EOF 가 오지 않으므로 데몬 스레드로 두어 블로킹이 무해하다.
+        과 무관하게 동작하는 가장 견고한 종료 경로다.
+
+        구현 주의 — 반드시 ``os.read(fd)`` 로 저수준 읽기를 한다. ``sys.stdin``
+        (BufferedReader)의 ``read`` 는 버퍼 락을 쥔 채 블로킹되는데, 이 데몬
+        스레드가 락을 쥔 상태로 인터프리터가 finalize 되면
+        ``Fatal Python error: _enter_buffered_busy``(Windows 0xC0000005)로
+        죽는다. stdin EOF 가 아닌 경로(bind 실패·SIGINT/SIGTERM 등)로 종료될
+        때마다 재현된다. ``os.read`` 는 그 파이썬 레벨 버퍼 락을 거치지 않아
+        finalize 가 락을 자유롭게 회수할 수 있어 안전하다.
         """
-        stream = getattr(sys.stdin, "buffer", None)
-        if stream is None:
+        try:
+            fd = sys.stdin.fileno()
+        except (AttributeError, ValueError, OSError):
             return  # stdin 이 없는 환경(예: 완전 분리 실행)은 시그널에 의존
+
+        # 터미널에서 직접 실행한 경우(tty)엔 부모가 닫아 줄 pipe 가 없어 감시가
+        # 무의미할 뿐 아니라 사용자 키보드 입력을 가로챈다. Electron 이 넘겨준
+        # pipe(=非tty)일 때만 EOF 를 감시한다.
+        try:
+            if os.isatty(fd):
+                return
+        except OSError:
+            pass
 
         def watch() -> None:
             try:
                 while True:
-                    if stream.read(1) == b"":
+                    if os.read(fd, 1) == b"":
                         break  # EOF → 부모 종료
-            except Exception:
+            except OSError:
                 pass  # 파이프 오류 등도 종료로 간주
             loop.call_soon_threadsafe(
                 lambda: self._stop.set() if self._stop is not None else None)
