@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { framesToCsv, downloadCsv, csvFilename } from '../utils/csvExport'
 
 // 표시 상한 선택지(고부하 시 렌더 행 수 제한). hook 의 MAX_FRAMES(500) 와 별개로
@@ -119,15 +119,30 @@ export default function RxMonitor({ frames, onClear, onUseFrame }) {
     return rows
   }, [grouped, filtered])
 
-  // 자동 스크롤: 일시정지가 아니고 하단 근처일 때만 최신 프레임까지 따라간다.
+  // 자동 스크롤(하단 추종): 사용자가 하단 근처에 있었는지를 스크롤 이벤트로 기록해 두고
+  // (atBottomRef), 새 프레임이 올 때 그 의도가 true 면 무조건 바닥으로 고정한다.
+  // 측정 시점을 "갱신 이전의 사용자 동작" 기준으로 잡으므로, 표시 상한 도달 후 윈도우가
+  // 한 번에 여러 행씩 밀리는 고부하 배치에서도 측정이 오염되지 않는다.
   const wrapRef = useRef(null)
-  useEffect(() => {
-    if (paused) return
+  const atBottomRef = useRef(true) // 초기엔 바닥에 있다고 본다
+
+  // 사용자가 위로 스크롤하면 추종을 멈추고, 다시 바닥 근처로 오면 재개한다.
+  function handleScroll() {
     const el = wrapRef.current
     if (!el) return
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60
-    if (nearBottom) el.scrollTop = el.scrollHeight
-  }, [filtered.length, paused])
+    atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+  }
+
+  // 표시 상한(displayLimit)에 도달하면 filtered.length 가 고정되므로, 최신 프레임의
+  // _seq 도 의존성에 넣어 새 프레임마다 effect 가 다시 돌게 한다(고부하 시 핵심).
+  // useLayoutEffect 로 페인트 전에 고정해 깜빡임·비동기 스크롤 이벤트 경합을 피한다.
+  const lastSeq = filtered.length > 0 ? filtered[filtered.length - 1]._seq : null
+  useLayoutEffect(() => {
+    if (paused || grouped) return // 일시정지·집계뷰(카운트 정렬)에선 추종 안 함
+    const el = wrapRef.current
+    if (!el) return
+    if (atBottomRef.current) el.scrollTop = el.scrollHeight
+  }, [filtered.length, lastSeq, paused, grouped])
 
   // CSV 내보내기: 표시 원본(일시정지면 스냅샷, 아니면 라이브 frames) 전체를 내보낸다.
   // 검색/표시상한과 무관하게 보유 프레임 전체가 대상이다.
@@ -172,7 +187,7 @@ export default function RxMonitor({ frames, onClear, onUseFrame }) {
         </div>
       </div>
 
-      <div className="rx-table-wrap" ref={wrapRef}>
+      <div className="rx-table-wrap" ref={wrapRef} onScroll={handleScroll}>
         {grouped ? (
           <table>
             <thead>

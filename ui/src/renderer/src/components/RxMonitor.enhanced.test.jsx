@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import RxMonitor from './RxMonitor'
@@ -169,5 +169,58 @@ describe('RxMonitor 표시 상한', () => {
     // 최신 100개만 → 가장 오래된 0x100 은 사라지고 최신 0x195(0x100+149) 는 보인다
     expect(screen.queryByText('0x100')).not.toBeInTheDocument()
     expect(screen.getByText('0x195')).toBeInTheDocument()
+  })
+})
+
+describe('RxMonitor 자동 하단 추종', () => {
+  // jsdom 은 레이아웃이 없어 scrollHeight/clientHeight/scrollTop 가 모두 0 이다.
+  // 캡(상한)이 찬 채 화면이 넘치는 상황을 흉내내려고 geometry 를 인스턴스에 정의하고,
+  // scrollTop 쓰기를 spy 로 추적한다.
+  function stubGeom(el, { scrollHeight, clientHeight, scrollTop }) {
+    Object.defineProperty(el, 'scrollHeight', { value: scrollHeight, configurable: true })
+    Object.defineProperty(el, 'clientHeight', { value: clientHeight, configurable: true })
+    let top = scrollTop
+    const spy = vi.fn()
+    Object.defineProperty(el, 'scrollTop', {
+      get: () => top,
+      set: (v) => {
+        top = v
+        spy(v)
+      },
+      configurable: true
+    })
+    return spy
+  }
+
+  // 표시 상한(500)을 꽉 채운 프레임 묶음. start 만 바꾸면 윈도우가 밀린 다음 배치가 된다
+  // (길이는 그대로 500, 최신 _seq 만 증가).
+  const fullWindow = (start) =>
+    Array.from({ length: 500 }, (_, i) => frame({ _seq: start + i, can_id: 0x100 + ((start + i) & 0x1ff) }))
+
+  it('표시 상한에 도달해 길이가 고정돼도 새 프레임마다 끝까지 따라간다', () => {
+    const { container, rerender } = render(<RxMonitor frames={fullWindow(1)} onClear={() => {}} />)
+    const wrap = container.querySelector('.rx-table-wrap')
+    // 사용자가 스크롤한 적 없으므로 atBottomRef=true. 측정상으론 하단에서 멀어 보이게(scrollTop 작게)
+    // 둬서, 코드가 "갱신 후 재측정"이 아니라 "사용자 의도(=바닥에 있었음)"로 추종함을 확인한다.
+    const spy = stubGeom(wrap, { scrollHeight: 10000, clientHeight: 300, scrollTop: 5000 })
+
+    // 새 배치 → 길이 500 그대로, 최신 _seq 만 변함
+    rerender(<RxMonitor frames={fullWindow(2)} onClear={() => {}} />)
+
+    expect(spy).toHaveBeenLastCalledWith(10000) // 끝(scrollHeight)으로 고정
+  })
+
+  it('사용자가 위로 스크롤하면(하단에서 멀어지면) 새 프레임이 와도 추종을 멈춘다', () => {
+    const { container, rerender } = render(<RxMonitor frames={fullWindow(1)} onClear={() => {}} />)
+    const wrap = container.querySelector('.rx-table-wrap')
+    const spy = stubGeom(wrap, { scrollHeight: 10000, clientHeight: 300, scrollTop: 100 })
+
+    // 위로 스크롤한 상태 통지 → atBottomRef=false 로 기록(diff=10000-100-300=9600)
+    fireEvent.scroll(wrap)
+    spy.mockClear()
+
+    rerender(<RxMonitor frames={fullWindow(2)} onClear={() => {}} />)
+
+    expect(spy).not.toHaveBeenCalled() // scrollTop 을 건드리지 않음
   })
 })

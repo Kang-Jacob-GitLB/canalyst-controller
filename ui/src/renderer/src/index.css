@@ -573,6 +573,9 @@ button:focus-visible {
 }
 .rx-table-wrap {
   overflow-y: auto;
+  /* 상단 행이 표시 상한으로 밀려나도 브라우저 스크롤 앵커링이 scrollTop 을 보정하지
+     않게 한다. 자동 하단 추종(아래 useLayoutEffect)이 유일한 권위가 되도록. */
+  overflow-anchor: none;
   flex: 1;
   min-height: 0;
   border-radius: var(--r-sm);
