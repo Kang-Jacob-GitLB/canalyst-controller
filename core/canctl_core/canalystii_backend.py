@@ -62,15 +62,21 @@ class CanalystIIBackend(CanBackend):
         _ensure_usb_backend()  # Windows libusb 백엔드 보장
         import can  # 지연 import (실장비 미사용 시 로드 부담 제거)
 
+        # CANalyst-II 는 2채널 장비다. 두 채널(0,1)을 모두 init·start 해서
+        # 어느 채널로든 송수신할 수 있게 한다. 한 채널만 열면 driver 가
+        # init 되지 않은 채널 송신을 RuntimeError("Channel N is not initialized")
+        # 로 거부하므로, 연결 채널과 다른 채널로 송신하면 실패한다.
+        # (channel 인자는 프로토콜 호환을 위해 받지만 채널 선택에는 쓰지 않는다.
+        #  두 채널 모두 connect 의 bitrate 로 초기화된다.)
         self._channel = channel
         self._bus = can.Bus(
             interface="canalystii",
-            channel=channel,
+            channel=(0, 1),
             device=device_index,
             bitrate=bitrate,
         )
-        log.info("연결됨: device=%d channel=%d bitrate=%d",
-                 device_index, channel, bitrate)
+        log.info("연결됨: device=%d channels=(0,1) bitrate=%d",
+                 device_index, bitrate)
 
     def disconnect(self) -> None:
         if self._bus is not None:

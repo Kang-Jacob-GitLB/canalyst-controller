@@ -10,7 +10,7 @@ CANalyst-II 제어 데스크톱 앱. Python 코어(CAN + WebSocket) + Electron/R
 ## WebSocket 프로토콜 (JSON, 한 줄=한 메시지)
 
 ### Client→Server 명령
-- 연결: `list_devices` / `connect{device_index,channel,bitrate}` / `disconnect`
+- 연결: `list_devices` / `connect{device_index,channel,bitrate}` / `disconnect` — **connect 는 장비의 두 채널(0,1)을 모두 같은 `bitrate` 로 열어** 어느 채널로든 송수신이 가능하다(`channel` 필드는 프로토콜 호환용으로 유지되나 채널 선택에는 쓰이지 않음). 채널별 비트레이트는 미지원.
 - 송신: `send{channel,can_id,extended,rtr,data:[..]}`
 - 수신 필터: `set_filter{ids:[..],mask?,channel?}` — 빈 `ids`=전체 통과. `mask` 생략 시 정확 일치(all-ones), `channel` 생략/null 시 전체 채널. **set_filter는 필터 전체를 교체**(미지정 항목은 기본값으로 리셋).
 - 로깅·재생: `start_log{path}` / `stop_log` / `replay{path}` (기록 포맷은 JSONL, 한 줄=한 프레임)

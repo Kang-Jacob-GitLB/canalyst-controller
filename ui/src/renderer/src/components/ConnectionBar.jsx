@@ -17,7 +17,6 @@ function parseCustomBitrate(text) {
 
 export default function ConnectionBar({ devices, status, onConnect, onDisconnect, onRefresh }) {
   const [deviceIndex, setDeviceIndex] = usePersistentState('canctl.conn.deviceIndex', 0)
-  const [channel, setChannel] = usePersistentState('canctl.conn.channel', 0)
   // 표준 드롭다운 값(항상 숫자) — 기존 동작/키 유지
   const [bitrate, setBitrate] = usePersistentState('canctl.conn.bitrate', 500000)
   // 'standard' | 'custom' — 어느 쪽 비트레이트를 쓸지
@@ -60,17 +59,8 @@ export default function ConnectionBar({ devices, status, onConnect, onDisconnect
         </select>
       </label>
 
-      <label>
-        채널
-        <select
-          value={channel}
-          onChange={(e) => setChannel(Number(e.target.value))}
-          disabled={connected}
-        >
-          <option value={0}>0</option>
-          <option value={1}>1</option>
-        </select>
-      </label>
+      {/* 채널 선택기 없음: 연결 시 두 채널(0,1)을 모두 열므로 연결 단계에서
+          채널을 고를 필요가 없다. 송신 채널은 송신 폼에서, 수신 채널은 필터에서 고른다. */}
 
       <label>
         비트레이트
@@ -111,7 +101,8 @@ export default function ConnectionBar({ devices, status, onConnect, onDisconnect
       ) : (
         <button
           className="btn-primary"
-          onClick={() => onConnect(deviceIndex, channel, effectiveBitrate)}
+          // 두 채널을 모두 여므로 connect 의 channel 인자는 쓰이지 않는다(프로토콜 호환용 0).
+          onClick={() => onConnect(deviceIndex, 0, effectiveBitrate)}
           disabled={customInvalid}
         >
           연결
