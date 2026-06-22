@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-// Spotify CircularSp 대용으로 Figtree(가변) 번들 — 오프라인 동작, 미설치 시 시스템 폰트로 폴백
-import '@fontsource-variable/figtree'
+// Pretendard 폰트는 index.css 의 @font-face 에서 woff2 만 번들(레거시 woff 제외).
 import App from './App'
 import './index.css'
 

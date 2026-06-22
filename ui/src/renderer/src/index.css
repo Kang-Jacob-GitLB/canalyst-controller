@@ -5,6 +5,37 @@
    그린(#1ed760)은 장식이 아니라 기능 전용(연결/송신/활성)으로만 쓴다.
    ============================================================ */
 
+/* Pretendard 번들(한글+라틴 단일 패밀리, 완전 오프라인) — 앱이 쓰는 가중치만,
+   woff2 만 동봉(레거시 woff 제외). 각 파일에 한글·라틴이 모두 포함돼 한영 타이포 통일. */
+@font-face {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('@fontsource/pretendard/files/pretendard-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('@fontsource/pretendard/files/pretendard-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('@fontsource/pretendard/files/pretendard-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('@fontsource/pretendard/files/pretendard-latin-700-normal.woff2') format('woff2');
+}
+
 :root {
   color-scheme: dark;
 
@@ -63,10 +94,11 @@
   --sp-6: 24px;
 
   /* --- 타이포 --- */
-  --font-ui: 'Figtree Variable', 'Figtree', 'Segoe UI Variable Text', 'Segoe UI',
-    -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', 'Malgun Gothic',
-    'Helvetica Neue', Arial, sans-serif;
-  /* hex/데이터 정렬을 위한 모노 — CAN 엔지니어링용 의도적 예외(Spotify 는 전부 비례) */
+  /* Pretendard 단일 패밀리로 한글+라틴 통일(번들, 완전 오프라인).
+     미적재 시에만 시스템 한글 폰트로 폴백. */
+  --font-ui: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI',
+    -apple-system, BlinkMacSystemFont, system-ui, 'Helvetica Neue', Arial, sans-serif;
+  /* hex/데이터 정렬을 위한 모노 — CAN 엔지니어링용 의도적 예외(Pretendard 는 비례폭) */
   --font-mono: 'Cascadia Code', 'Cascadia Mono', 'Consolas', 'SF Mono', ui-monospace, monospace;
 
   /* --- 레이아웃 폭 --- */
