@@ -719,8 +719,9 @@ button:focus-visible {
   padding: 6px 10px;
 }
 .tx-preset-name {
-  font-family: var(--font-mono);
+  /* 프리셋 이름은 사용자 텍스트(한글 포함)이므로 UI 폰트(Pretendard) 사용 — 모노 금지 */
   font-size: 0.82rem;
+  font-weight: 600;
   color: var(--text-near);
   overflow: hidden;
   text-overflow: ellipsis;
