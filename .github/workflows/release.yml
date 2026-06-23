@@ -30,12 +30,24 @@ jobs:
       # (단 release 잡은 needs: build 라 하나라도 실패하면 발행되지 않는다 — 의도적.)
       fail-fast: false
       matrix:
+        # 설치본 파일명은 CI 에서 electron-builder 의 -c.<타깃>.artifactName 으로
+        # 통일한다(로컬 npm run dist 는 건드리지 않음). 최종형:
+        #   CANalyst-II-Controller-<표시버전>-<플랫폼>-<아치>.<확장자>
+        #   예) ...-2026.06.23-rc.2-win-x64.exe / -mac-arm64.dmg / -linux-x86_64.AppImage
+        #   - art_target : artifactName 을 덮어쓸 electron-builder 타깃 키
+        #   - art_tail   : 버전 뒤에 붙는 <플랫폼>-<아치>.<확장자> 조각.
+        #       · Windows 는 NSIS 의 ${arch} 가 빈 문자열로 나오는 버그가 있어 x64 를
+        #         하드코딩하고 확장자도 리터럴(exe)로 둔다.
+        #       · mac/linux 는 ${arch}·${ext} 를 electron-builder 매크로로 두어
+        #         arm64/dmg, x86_64/AppImage 로 자동 치환되게 한다(향후 멀티아치 대응).
         include:
           - os: windows-latest
             core_bin: canctl-core.exe
             eb_platform: "--win"
             installer_glob: "ui/dist/*.exe"
             asset: win
+            art_target: nsis
+            art_tail: "win-x64.exe"
           # macos-latest 는 현재 arm64(Apple Silicon) 러너 → 산출물은 arm64 전용 dmg.
           # Intel Mac 용은 별도 빌드가 필요(코어 PyInstaller 도 universal 이어야 함) — 범위 밖.
           - os: macos-latest
@@ -43,11 +55,15 @@ jobs:
             eb_platform: "--mac"
             installer_glob: "ui/dist/*.dmg"
             asset: mac
+            art_target: dmg
+            art_tail: "mac-${arch}.${ext}"
           - os: ubuntu-latest
             core_bin: canctl-core
             eb_platform: "--linux"
             installer_glob: "ui/dist/*.AppImage"
             asset: linux
+            art_target: appImage
+            art_tail: "linux-${arch}.${ext}"
 
     # 모든 OS 에서 동일하게 동작하도록 run 셸을 bash 로 고정한다.
     #   - Windows: Git Bash. '-c.x=y' 같은 인자를 pwsh 가 쪼개 도구가 오해하는 일 회피.
@@ -165,13 +181,27 @@ jobs:
       #   스스로 릴리즈를 만들려다 아래 release 잡과 충돌하는 것을 막는다.
       # CSC_IDENTITY_AUTO_DISCOVERY=false: macOS 에서 서명 인증서 자동 탐색을 끈다
       #   (CI 에 인증서가 없을 때 서명 시도 실패를 막음). win/linux 에는 무해.
+      #
+      # 설치본 파일명을 -c.<타깃>.artifactName 으로 통일한다(electron-builder.yml
+      # 미수정 → 로컬 npm run dist 의 기본 파일명은 그대로 유지). -c.x=y 는
+      # electron-builder.yml 을 그대로 로드한 위에 해당 필드만 덮어쓴다.
+      #   CANalyst-II-Controller-<표시버전>-<art_tail>
+      #   - 표시버전은 0 패딩된 steps.ver.outputs.version(예: 2026.06.23-rc.2).
+      #     semver(${version})는 선행 0 을 못 담으므로 여기서 리터럴로 박는다.
+      #   - ART 를 '작은따옴표'로 감싸 bash 가 ${arch}/${ext}(electron 매크로)를
+      #     건드리지 못하게 하고, electron-builder 가 이를 arm64·x86_64·dmg 등으로 치환.
+      # 주의: 과거 -c.x=y 가 깨졌던 건 pwsh 가 인자를 쪼갰기 때문(#9). 지금은 job
+      #   레벨 shell: bash + 따옴표로 단일 argv 가 보장되므로 안전하다. 되돌리지 말 것.
       - name: UI 패키징 (electron-builder)
         working-directory: ui
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: |
           npm pkg set version="${{ steps.ver.outputs.semver }}"
-          npx electron-builder ${{ matrix.eb_platform }} --publish never
+          ART='CANalyst-II-Controller-${{ steps.ver.outputs.version }}-${{ matrix.art_tail }}'
+          echo "artifactName=$ART"
+          npx electron-builder ${{ matrix.eb_platform }} --publish never \
+            -c.${{ matrix.art_target }}.artifactName="$ART"
 
       # OS별 설치본을 워크플로우 아티팩트로 업로드(이름은 OS별로 구분 — v4 는 중복 이름 거부).
       # release 잡이 이 아티팩트들을 모두 받아 GitHub Release 에 첨부한다.
