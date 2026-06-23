@@ -1,12 +1,23 @@
 /* ============================================================
-   CANalyst-II — Spotify 기반 디자인 시스템 (DESIGN.md 토큰화)
-   "content-first darkness": UI 는 어둠 속으로 물러나고,
-   실시간 CAN 트래픽(모니터)이 유일하게 빛나는 콘텐츠가 된다.
-   그린(#1ed760)은 장식이 아니라 기능 전용(연결/송신/활성)으로만 쓴다.
+   CANalyst-II — LITBIG 디자인 시스템 · 잉크-다크 변주
+   ------------------------------------------------------------
+   리트빅 브랜드(라이트) 시스템의 ink(#231815) · 오렌지(#FF6A13) ·
+   타입 · 챔퍼 모티프를 계승하되, 장시간 CAN 모니터링에 맞춰 표면을
+   warm-ink 다크로 도출한다("brand moment" 용 ink 표면을 전면 적용).
+
+   오렌지 규율: "가장 중요한 한 가지"에만 쓴다 —
+     주 CTA(연결·송신) · 라이브 연결상태 · 내 송신(TX) · 히어로 수치.
+   그 외(디코드·토글·통계 등)는 ink/뉴트럴로 물러난다. 페이지의
+   오렌지 면적이 ~10% 를 넘으면 줄인다.
    ============================================================ */
 
-/* Pretendard 번들(한글+라틴 단일 패밀리, 완전 오프라인) — 앱이 쓰는 가중치만,
-   woff2 만 동봉(레거시 woff 제외). 각 파일에 한글·라틴이 모두 포함돼 한영 타이포 통일. */
+/* ------------------------------------------------------------
+   웹폰트(완전 오프라인 번들, woff2)
+   - Pretendard : 한글+라틴 UI/본문 단일 패밀리(기존 유지).
+   - Chakra Petch: 디스플레이/워드마크 — 챔퍼드 LITBIG 워드마크 대용.
+                   한글 글리프가 없어 한글은 Pretendard 로 폴백된다(의도됨).
+   - JetBrains Mono: 부품번호·스펙·hex·정렬 수치(CAN 데이터의 핵심 폰트).
+   ------------------------------------------------------------ */
 @font-face {
   font-family: 'Pretendard';
   font-style: normal;
@@ -36,54 +47,111 @@
   src: url('@fontsource/pretendard/files/pretendard-latin-700-normal.woff2') format('woff2');
 }
 
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('@fontsource/chakra-petch/files/chakra-petch-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('@fontsource/chakra-petch/files/chakra-petch-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('@fontsource/chakra-petch/files/chakra-petch-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('@fontsource/jetbrains-mono/files/jetbrains-mono-latin-600-normal.woff2') format('woff2');
+}
+
 :root {
   color-scheme: dark;
 
-  /* --- 표면(깊이) : near-black 셰이드 변주로만 단을 만든다 --- */
-  --bg-base: #121212; /* Level 0 — 페이지 바탕(가장 깊은 어둠) */
-  --bg-sidebar: #0a0a0a; /* 좌측 라이브러리 레일(가장 깊게 떨군다) */
-  --bg-surface: #181818; /* Level 1 — 카드/패널 */
-  --bg-input: #1f1f1f; /* 입력/버튼 인터랙티브 표면 */
-  --bg-card: #242424; /* 살짝 떠오른 카드 */
-  --bg-hover: #2a2a2a; /* 행/카드 호버 */
-  --bg-row-alt: #1c1c1c;
+  /* --- 브랜드 원색 --- */
+  --litbig-orange: #ff6a13; /* 큐브 면 — 유일한 "큰소리" 색 */
+  --litbig-orange-600: #e85a04; /* 호버(브랜드 규칙: 어둡게) */
+  --litbig-orange-700: #c44a00; /* 프레스 */
+  --litbig-orange-300: #ffa66b; /* 연한 강조(디코드 등 "조용한 틴트") */
+  --litbig-ink: #231815; /* 워드마크 다크(웜) — 메인 표면 */
 
-  /* --- 브랜드 액센트(기능 전용) --- */
-  --accent: #1ed760; /* Spotify Green — play/연결/송신/활성 */
-  --accent-bright: #1fdf64; /* 호버 시 밝게 */
-  --accent-press: #169c46;
-  --accent-tint: rgba(30, 215, 96, 0.13); /* 활성 토글 배경 틴트 */
-  --on-accent: #000000; /* 그린 위 텍스트/아이콘은 검정 */
+  /* --- 표면(깊이): warm-ink 셰이드 변주로만 단을 만든다 --- */
+  --bg-base: #1a1210; /* Level 0 — 페이지 바탕 */
+  --bg-sidebar: #140d0b; /* 좌측 라이브러리 레일(가장 깊게) */
+  --bg-surface: #231815; /* Level 1 — 카드/패널 = ink 본색 */
+  --bg-input: #2e2522; /* 입력/버튼 인터랙티브 표면(ink-90) */
+  --bg-card: #2e2522; /* 살짝 떠오른 카드 */
+  --bg-hover: #3d332f; /* 행/카드 호버(ink-80) */
+  --bg-row-alt: #1f1613;
 
-  /* --- 텍스트 --- */
-  --text-base: #ffffff;
-  --text-near: #cbcbcb;
-  --text-secondary: #b3b3b3;
-  --text-muted: #7c7c7c;
+  /* --- 브랜드 액센트(기능 전용, 절제) --- */
+  --accent: var(--litbig-orange); /* CTA/라이브/송신/히어로 수치 */
+  --accent-bright: var(--litbig-orange-600); /* 호버 시(브랜드: 어둡게) */
+  --accent-press: var(--litbig-orange-700);
+  --accent-tint: rgba(255, 106, 19, 0.14); /* 활성 틴트/내 송신 행 */
+  --on-accent: #ffffff; /* 오렌지 위 텍스트/아이콘은 흰색(브랜드) */
 
-  /* --- 시맨틱 --- */
-  --negative: #f3727f;
-  --warning: #ffa42b;
-  --info: #539df5;
+  /* --- 텍스트(warm white) --- */
+  --text-base: #f5f1ee; /* ink 위 기본(브랜드 fg-on-ink) */
+  --text-near: #e8e0db;
+  --text-secondary: #b4a8a1;
+  --text-muted: #897c74;
 
-  /* --- 보더/구분선 --- */
-  --border: #2a2a2a;
-  --border-strong: #4d4d4d;
-  --border-light: #7c7c7c;
+  /* --- 시맨틱(다크 표면용으로 명도 보정) --- */
+  --negative: #f2685f; /* danger */
+  --warning: #e8a33d; /* amber — 오렌지와 충돌 피함 */
+  --info: #5b95e0;
+  --success: #34c77b;
 
-  /* --- 그림자(어두운 배경에선 짙어야 보인다) --- */
-  --shadow-card: rgba(0, 0, 0, 0.3) 0px 8px 8px;
-  --shadow-dialog: rgba(0, 0, 0, 0.5) 0px 8px 24px;
-  --inset-input: inset 0 0 0 1px #3a3a3a;
+  /* --- 보더/구분선(warm ink) --- */
+  --border: #382c28;
+  --border-strong: #4a3d38;
+  --border-light: #5c4e48;
+
+  /* --- 그림자(다크 배경에선 짙어야 보인다) --- */
+  --shadow-card: rgba(0, 0, 0, 0.32) 0px 8px 16px;
+  --shadow-dialog: rgba(0, 0, 0, 0.5) 0px 12px 32px;
+  --shadow-orange: 0 6px 20px rgba(255, 106, 19, 0.3); /* 히어로 CTA 전용 */
+  --inset-input: inset 0 0 0 1px var(--border-strong);
   --inset-input-focus: inset 0 0 0 1px var(--accent);
 
-  /* --- 반경(필 & 서클 지오메트리) --- */
-  --r-xs: 4px;
-  --r-sm: 6px;
-  --r-md: 8px;
-  --r-lg: 12px;
-  --r-pill: 500px;
+  /* --- 반경(브랜드: 샤프가 기본 — 2px 컨트롤 / 4px 카드) --- */
+  --r-xs: 2px; /* 기본 컨트롤(버튼/입력) */
+  --r-sm: 4px; /* 기본 카드 */
+  --r-md: 4px; /* 패널/카드 */
+  --r-lg: 8px; /* 대형 카드/모달 */
+  --r-pill: 999px; /* 상태 칩 한정 */
   --r-full: 9999px;
+
+  /* --- 챔퍼 모티프(브랜드의 유일한 시그니처 도형, 45° 컷) --- */
+  --chamfer-sm: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  --chamfer-md: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
 
   /* --- 간격(8px 베이스) --- */
   --sp-1: 4px;
@@ -94,12 +162,19 @@
   --sp-6: 24px;
 
   /* --- 타이포 --- */
-  /* Pretendard 단일 패밀리로 한글+라틴 통일(번들, 완전 오프라인).
-     미적재 시에만 시스템 한글 폰트로 폴백. */
-  --font-ui: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI',
-    -apple-system, BlinkMacSystemFont, system-ui, 'Helvetica Neue', Arial, sans-serif;
-  /* hex/데이터 정렬을 위한 모노 — CAN 엔지니어링용 의도적 예외(Pretendard 는 비례폭) */
-  --font-mono: 'Cascadia Code', 'Cascadia Mono', 'Consolas', 'SF Mono', ui-monospace, monospace;
+  /* 디스플레이(워드마크/큰 수치): Chakra Petch → 한글은 Pretendard 폴백 */
+  --font-display: 'Chakra Petch', 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic',
+    -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  /* UI/본문: Pretendard 단일 패밀리(한글+라틴 통일, 번들) */
+  --font-ui: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', -apple-system,
+    BlinkMacSystemFont, system-ui, 'Helvetica Neue', Arial, sans-serif;
+  /* 모노(hex/스펙/정렬 수치): JetBrains Mono(브랜드) → 시스템 모노 폴백 */
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Cascadia Mono', 'Consolas', 'SF Mono',
+    ui-monospace, monospace;
+
+  /* --- 트래킹 --- */
+  --tracking-tight: -0.02em; /* 디스플레이 헤딩 */
+  --tracking-caps: 0.12em; /* 아이브로/캡스 라벨 */
 
   /* --- 레이아웃 폭 --- */
   --sidebar-w: 268px;
@@ -143,6 +218,7 @@ h3 {
 .sidebar {
   background: var(--bg-sidebar);
   border-radius: var(--r-md);
+  border: 1px solid var(--border);
   padding: var(--sp-4) var(--sp-3);
   display: flex;
   flex-direction: column;
@@ -153,19 +229,18 @@ h3 {
 
 .brand {
   display: flex;
-  align-items: center;
-  gap: var(--sp-3);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border);
 }
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--on-accent);
-  flex: none;
-  box-shadow: var(--shadow-card);
+/* LITBIG 로고: ink 표면에선 인버스 트릭으로 흰 모노크롬 워드마크 */
+.brand-logo {
+  height: 22px;
+  width: auto;
+  filter: brightness(0) invert(1);
+  opacity: 0.92;
 }
 .brand-text {
   display: flex;
@@ -173,15 +248,18 @@ h3 {
   line-height: 1.1;
 }
 .brand-text h1 {
+  /* 제품명 워드마크 — 챔퍼드 디스플레이 폰트로 브랜드 톤 부여 */
+  font-family: var(--font-display);
   font-size: 1.18rem;
   font-weight: 700;
-  letter-spacing: -0.2px;
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-base);
   white-space: nowrap;
 }
 .brand-sub {
   font-size: 0.72rem;
   color: var(--text-secondary);
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.2px;
 }
 
@@ -191,9 +269,10 @@ h3 {
   gap: var(--sp-2);
 }
 .side-title {
+  font-family: var(--font-display);
   font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 1.4px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--text-secondary);
 }
@@ -240,9 +319,11 @@ h3 {
   margin-bottom: var(--sp-3);
 }
 .panel-header h2 {
+  font-family: var(--font-display);
   font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: -0.2px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-base);
 }
 
 code {
@@ -259,7 +340,7 @@ code {
 }
 
 /* ============================================================
-   폼 컨트롤: 입력/셀렉트는 우묵한(inset) 표면, 버튼은 필 지오메트리
+   폼 컨트롤: 입력/셀렉트는 우묵한(inset) 표면, 버튼은 샤프(2px)
    ============================================================ */
 label {
   font-size: 0.74rem;
@@ -281,12 +362,13 @@ input {
 }
 select:hover,
 input:hover {
-  box-shadow: inset 0 0 0 1px #555;
+  box-shadow: inset 0 0 0 1px var(--border-light);
 }
 select:focus,
 input:focus {
   outline: none;
-  box-shadow: var(--inset-input-focus);
+  /* 브랜드 포커스: 오렌지 보더 + 옅은 오렌지 글로우 */
+  box-shadow: var(--inset-input-focus), 0 0 0 3px rgba(255, 106, 19, 0.18);
 }
 input[aria-invalid='true'] {
   box-shadow: inset 0 0 0 1px var(--negative);
@@ -297,30 +379,32 @@ select:disabled {
   cursor: not-allowed;
 }
 
-/* 버튼 기본형 = Spotify 다크 필(보조 액션) */
+/* 버튼 기본형 = 보조 액션(ink 표면 + 보더로 입체감, 샤프 2px) */
 button {
   cursor: pointer;
   font-family: inherit;
   font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.3px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
   color: var(--text-near);
   background: var(--bg-input);
-  border: none;
-  border-radius: var(--r-full);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xs);
   padding: 8px 16px;
   transition:
-    transform 0.1s ease,
+    transform 0.12s cubic-bezier(0.2, 0, 0, 1),
     background 0.12s ease,
     color 0.12s ease,
+    border-color 0.12s ease,
     box-shadow 0.12s ease;
 }
 button:hover:not(:disabled) {
   background: var(--bg-hover);
+  border-color: var(--border-light);
   color: var(--text-base);
 }
 button:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: translateY(1px);
 }
 button:disabled {
   opacity: 0.4;
@@ -331,29 +415,36 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-/* 주요 CTA(연결/송신) = 그린 필, 검정 텍스트, 호버 시 확대+밝게(시그니처 무빙) */
+/* 주요 CTA(연결/송신) = 오렌지 필, 흰 텍스트.
+   브랜드 모션: 호버 시 어두워지며 1px 떠오름 + 오렌지 그림자, 프레스 시 가라앉음 */
 .btn-primary {
   background: var(--accent);
   color: var(--on-accent);
+  border-color: var(--accent);
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-bright);
+  border-color: var(--accent-bright);
   color: var(--on-accent);
-  transform: scale(1.035);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-orange);
 }
 .btn-primary:active:not(:disabled) {
   background: var(--accent-press);
-  transform: scale(0.99);
+  border-color: var(--accent-press);
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 /* 파괴적 액션(연결해제/로깅중지/삭제) = 아웃라인 레드, 호버 시 채움 */
 .btn-danger {
   background: transparent;
   color: var(--negative);
-  box-shadow: inset 0 0 0 1px var(--negative);
+  border-color: var(--negative);
 }
 .btn-danger:hover:not(:disabled) {
   background: var(--negative);
+  border-color: var(--negative);
   color: var(--on-accent);
 }
 
@@ -363,14 +454,14 @@ button:focus-visible {
   gap: 10px;
   margin: 0;
   padding: 10px 10px 10px 14px;
-  background: rgba(243, 114, 127, 0.12);
+  background: rgba(242, 104, 95, 0.12);
   color: var(--negative);
-  border-radius: var(--r-md);
-  box-shadow: inset 0 0 0 1px rgba(243, 114, 127, 0.4);
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 0 0 1px rgba(242, 104, 95, 0.4);
   font-weight: 600;
   font-size: 0.85rem;
   /* key={errorSeq} 로 재마운트될 때마다 실행 → 새 에러를 시각적으로 알린다. */
-  animation: app-error-pulse 0.45s ease-out;
+  animation: app-error-pulse 0.45s cubic-bezier(0.2, 0, 0, 1);
 }
 .app-error-text {
   flex: 1;
@@ -394,7 +485,9 @@ button:focus-visible {
   transition: background 0.12s ease, opacity 0.12s ease;
 }
 .app-error-close:hover {
-  background: rgba(243, 114, 127, 0.18);
+  background: rgba(242, 104, 95, 0.18);
+  border-color: transparent;
+  color: var(--negative);
   opacity: 1;
 }
 
@@ -404,27 +497,27 @@ button:focus-visible {
   0% {
     opacity: 0;
     transform: translateY(-8px);
-    background: rgba(243, 114, 127, 0.34);
-    box-shadow: inset 0 0 0 1px var(--negative), 0 0 0 4px rgba(243, 114, 127, 0.45);
+    background: rgba(242, 104, 95, 0.34);
+    box-shadow: inset 0 0 0 1px var(--negative), 0 0 0 4px rgba(242, 104, 95, 0.45);
   }
   60% {
     opacity: 1;
     transform: translateY(0);
-    box-shadow: inset 0 0 0 1px var(--negative), 0 0 0 7px rgba(243, 114, 127, 0);
+    box-shadow: inset 0 0 0 1px var(--negative), 0 0 0 7px rgba(242, 104, 95, 0);
   }
   100% {
-    background: rgba(243, 114, 127, 0.12);
-    box-shadow: inset 0 0 0 1px rgba(243, 114, 127, 0.4);
+    background: rgba(242, 104, 95, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(242, 104, 95, 0.4);
   }
 }
 
 /* 모션 최소화 선호 시: 이동/스케일은 빼되, "새 에러" 신호인 배경 플래시는 유지한다. */
 @keyframes app-error-flash {
   0% {
-    background: rgba(243, 114, 127, 0.34);
+    background: rgba(242, 104, 95, 0.34);
   }
   100% {
-    background: rgba(243, 114, 127, 0.12);
+    background: rgba(242, 104, 95, 0.12);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -456,10 +549,10 @@ button:focus-visible {
   color: var(--text-muted);
 }
 .status-badge .mock-badge {
-  background: rgba(255, 164, 43, 0.16);
+  background: rgba(232, 163, 61, 0.16);
   color: var(--warning);
   padding: 2px 8px;
-  border-radius: var(--r-full);
+  border-radius: var(--r-pill);
   font-weight: 700;
   font-size: 0.7rem;
   letter-spacing: 0.2px;
@@ -554,9 +647,10 @@ button:focus-visible {
   background: none;
   border: none;
   padding: 0;
+  font-family: var(--font-display);
   font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 1.4px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--text-secondary);
   display: flex;
@@ -566,6 +660,7 @@ button:focus-visible {
 }
 .tools-toggle:hover:not(:disabled) {
   background: none;
+  border-color: transparent;
   color: var(--text-base);
 }
 .tools-toggle .chev {
@@ -583,13 +678,14 @@ button:focus-visible {
 }
 
 /* ============================================================
-   RX/TX 모니터 — "트랙 리스트"가 곧 빛나는 콘텐츠
+   RX/TX 모니터 — 빛나는 콘텐츠(주인공)
    ============================================================ */
 .rx-monitor {
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
   border-radius: var(--r-md);
+  border: 1px solid var(--border);
   padding: var(--sp-4);
   min-height: 0;
   box-shadow: var(--shadow-card);
@@ -621,9 +717,10 @@ button:focus-visible {
   top: 0;
   z-index: 1;
   background: var(--bg-surface);
+  font-family: var(--font-display);
   font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.8px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border-strong);
@@ -645,32 +742,35 @@ button:focus-visible {
   border-bottom: 1px solid var(--border);
   font-size: 0.78rem;
 }
+/* 디코드 메시지명 = "조용한" 연한 오렌지 틴트(풀 오렌지는 아껴 쓴다) */
 .decoded-msg {
-  color: var(--accent);
+  color: var(--litbig-orange-300);
   font-weight: 700;
 }
 .decoded-signals {
   color: var(--text-secondary);
 }
 
-/* 송수신 방향 배지: TX(내 송신)=그린 기능색, RX=중립 */
+/* 송수신 방향 배지: TX(내 송신)=오렌지 틴트(시선 끌기), RX=중립 ink 칩 */
 .dir-badge {
   display: inline-block;
   padding: 1px 8px;
-  border-radius: var(--r-full);
+  border-radius: var(--r-pill);
+  font-family: var(--font-display);
   font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.4px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
 }
 .dir-rx {
   background: var(--bg-hover);
   color: var(--text-secondary);
 }
 .dir-tx {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--accent-tint);
+  color: var(--litbig-orange-300);
+  box-shadow: inset 0 0 0 1px rgba(255, 106, 19, 0.4);
 }
-/* TX 행 = "내 트랙": 그린 좌측 액센트 + 옅은 틴트로 한눈에 구분(기능적 그린) */
+/* TX 행 = "내 트랙": 오렌지 좌측 액센트 + 옅은 틴트(내 송신은 드물어 면적이 작다) */
 .rx-monitor tbody tr.frame-tx td {
   background: var(--accent-tint);
   box-shadow: inset 3px 0 0 var(--accent);
@@ -684,7 +784,7 @@ button:focus-visible {
   background: var(--bg-hover);
 }
 .rx-monitor tbody tr.frame-tx:hover td {
-  background: rgba(30, 215, 96, 0.2);
+  background: rgba(255, 106, 19, 0.22);
 }
 
 /* 모니터 툴바: 검색 / 일시정지 / 집계 / 표시상한 / CSV / 지우기 */
@@ -703,11 +803,11 @@ button:focus-visible {
   font-size: 0.78rem;
   padding: 6px 10px;
 }
-/* 검색 = Spotify 검색 필(둥근 알약) */
+/* 검색 필드 — 브랜드 폼 입력(샤프 2px) */
 .rx-search {
   min-width: 160px;
-  border-radius: var(--r-pill);
-  padding-left: 14px;
+  border-radius: var(--r-xs);
+  padding-left: 12px;
 }
 .rx-limit {
   display: flex;
@@ -717,12 +817,13 @@ button:focus-visible {
   color: var(--text-secondary);
 }
 .rx-limit select {
-  border-radius: var(--r-pill);
+  border-radius: var(--r-xs);
 }
-/* 토글(일시정지·집계) 활성 = 기능적 그린 강조 */
+/* 토글(일시정지·집계) 활성 = 뉴트럴 "눌림"(오렌지는 아껴 쓴다) */
 .rx-toolbar button[aria-pressed='true'] {
-  background: var(--accent-tint);
-  color: var(--accent);
+  background: var(--bg-hover);
+  border-color: var(--border-light);
+  color: var(--text-base);
 }
 .rx-paused {
   color: var(--warning);
@@ -739,6 +840,7 @@ button:focus-visible {
   gap: var(--sp-3);
   background: var(--bg-surface);
   border-radius: var(--r-md);
+  border: 1px solid var(--border);
   padding: var(--sp-4);
   box-shadow: var(--shadow-card);
 }
@@ -790,7 +892,7 @@ button:focus-visible {
   font-weight: 600;
 }
 
-/* 송신 프리셋 목록(인라인 스타일 → 클래스로 토큰화) */
+/* 송신 프리셋 목록 */
 .tx-presets {
   list-style: none;
   margin: 0;
@@ -807,6 +909,7 @@ button:focus-visible {
   gap: 6px;
   background: var(--bg-input);
   border-radius: var(--r-sm);
+  border: 1px solid var(--border);
   padding: 8px 10px;
 }
 .tx-preset-name {
@@ -835,7 +938,7 @@ button:focus-visible {
   justify-content: space-between;
   gap: var(--sp-2);
   flex-wrap: wrap;
-  background: rgba(255, 164, 43, 0.13);
+  background: rgba(232, 163, 61, 0.13);
   border-radius: var(--r-sm);
   padding: 8px 12px;
   box-shadow: inset 0 0 0 1px var(--warning);
@@ -867,11 +970,12 @@ button:focus-visible {
 }
 
 /* ============================================================
-   수신 통계 패널(카드) — "지금 듣는 곡" 메트릭처럼 큰 숫자
+   수신 통계 패널(카드) — 큰 수치는 디스플레이/모노로
    ============================================================ */
 .stats-panel {
   background: var(--bg-surface);
   border-radius: var(--r-md);
+  border: 1px solid var(--border);
   padding: var(--sp-4);
   box-shadow: var(--shadow-card);
   display: flex;
@@ -894,10 +998,11 @@ button:focus-visible {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-base);
   line-height: 1.2;
 }
+/* 히어로 수치(예: 초당 메시지) 하나만 오렌지로 — "가장 중요한 한 수" */
 .stat-value.accent {
   color: var(--accent);
 }
@@ -911,9 +1016,10 @@ button:focus-visible {
   border-collapse: collapse;
 }
 .stats-byid th {
+  font-family: var(--font-display);
   font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.6px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--text-muted);
   padding: 4px 6px;
