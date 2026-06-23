@@ -7,19 +7,8 @@ import StatsPanel from './components/StatsPanel'
 import RxMonitor from './components/RxMonitor'
 import TxPanel from './components/TxPanel'
 import DbcTxPanel from './components/DbcTxPanel'
-
-// 브랜드 마크: CAN 신호 파형을 그린 디스크 안에 담은 로고(시그니처).
-// 그린은 기능색이지만 브랜드 아이덴티티 1곳에만 허용한다.
-function BrandMark() {
-  return (
-    <span className="brand-mark" aria-hidden="true">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 12h3l2.5-6 4 13 3-9 2.5 4H22" />
-      </svg>
-    </span>
-  )
-}
+// LITBIG 공식 CI(가로형) — ink 사이드바에선 CSS 인버스 필터로 흰 모노크롬 워드마크가 된다.
+import litbigLogo from './assets/logo-litbig-horizontal.png'
 
 export default function App() {
   const url = window.canctl?.coreUrl ?? 'ws://127.0.0.1:8765'
@@ -61,7 +50,7 @@ export default function App() {
       {/* 좌측 라이브러리 레일: 브랜드 + 상태 + 연결 + 도구(자주 안 만지는 설정) */}
       <nav className="sidebar">
         <div className="brand">
-          <BrandMark />
+          <img className="brand-logo" src={litbigLogo} alt="LITBIG" />
           <div className="brand-text">
             <h1>CANalyst-II</h1>
             <span className="brand-sub">CAN 분석 콘솔</span>

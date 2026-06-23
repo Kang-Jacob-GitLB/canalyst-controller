@@ -13,6 +13,8 @@
     "dist": "electron-vite build && electron-builder"
   },
   "dependencies": {
+    "@fontsource/chakra-petch": "^5.2.7",
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "@fontsource/pretendard": "^5.2.5",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
