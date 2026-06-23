@@ -14,15 +14,44 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: 빌드 및 릴리즈
-    # 실장비가 Windows(Zadig WinUSB) 대상이고 코어 spec 도 Windows 기준이라
-    # 릴리즈 빌드는 Windows 전용. (mac/linux 는 추후 매트릭스로 확장 가능)
-    runs-on: windows-latest
+  # ── OS별 설치본 빌드 (매트릭스) ──────────────────────────────────────────
+  # Windows/macOS/Linux 각 러너에서 코어(PyInstaller) + UI(electron-builder)를
+  # 그 OS용 설치본으로 빌드해 워크플로우 아티팩트로 올린다. 실제 GitHub Release
+  # 발행·첨부는 아래 release 잡이 셋을 모아 한 번에 수행한다.
+  #   - core_bin        : PyInstaller --onefile 산출물 이름(Windows 만 .exe)
+  #   - eb_platform     : electron-builder 플랫폼 플래그(타겟은 electron-builder.yml 참조)
+  #   - installer_glob  : 그 OS 설치본 파일 glob (nsis=.exe / dmg / AppImage)
+  #   - asset           : 아티팩트 이름 구분용 OS 키
+  build:
+    name: 빌드 (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # 한 OS 가 실패해도 나머지 OS 빌드는 끝까지 돌려 원인 파악을 쉽게 한다.
+      # (단 release 잡은 needs: build 라 하나라도 실패하면 발행되지 않는다 — 의도적.)
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            core_bin: canctl-core.exe
+            eb_platform: "--win"
+            installer_glob: "ui/dist/*.exe"
+            asset: win
+          # macos-latest 는 현재 arm64(Apple Silicon) 러너 → 산출물은 arm64 전용 dmg.
+          # Intel Mac 용은 별도 빌드가 필요(코어 PyInstaller 도 universal 이어야 함) — 범위 밖.
+          - os: macos-latest
+            core_bin: canctl-core
+            eb_platform: "--mac"
+            installer_glob: "ui/dist/*.dmg"
+            asset: mac
+          - os: ubuntu-latest
+            core_bin: canctl-core
+            eb_platform: "--linux"
+            installer_glob: "ui/dist/*.AppImage"
+            asset: linux
 
-    # Windows 러너의 run: 기본 셸은 pwsh 라, '-c.x=y' 같은 인자를 PowerShell 이
-    # 쪼개 도구가 오해하는 일이 있다(electron-builder 가 설정파일 경로로 오인 등).
-    # 모든 run 스텝을 Git Bash 로 고정해 인자 파싱을 예측 가능하게 만든다.
+    # 모든 OS 에서 동일하게 동작하도록 run 셸을 bash 로 고정한다.
+    #   - Windows: Git Bash. '-c.x=y' 같은 인자를 pwsh 가 쪼개 도구가 오해하는 일 회피.
+    #   - macOS/Linux: 시스템 bash.
     defaults:
       run:
         shell: bash
@@ -41,7 +70,6 @@ jobs:
       #             (2026.06.23 → 2026.6.23, 프리릴리즈 -rc.1 은 그대로 보존).
       - name: 버전 도출
         id: ver
-        shell: bash
         run: |
           TAG="${GITHUB_REF_NAME}"
           VERSION="${TAG#v}"
@@ -73,19 +101,26 @@ jobs:
 
       # 코어 __version__ 을 태그 버전(표시용 2026.06.23)으로 주입한다.
       #   로컬 소스는 0.0.0 placeholder 이고, 태그를 단일 버전 출처로 삼는다.
-      #   현재 __version__ 은 외부로 노출되지 않지만(로그·프로토콜 미사용),
-      #   향후 hello/로그에 실릴 때를 대비해 일관성을 위해 미리 맞춰 둔다.
+      #   sed -i 는 macOS(BSD sed)에서 인자 규약이 달라 깨지므로, 세 OS 모두에
+      #   존재가 보장되는 python(위에서 setup 됨)으로 in-place 치환한다.
       - name: 코어 버전 주입
         working-directory: core
-        shell: bash
+        env:
+          NEW_VERSION: ${{ steps.ver.outputs.version }}
         run: |
-          sed -i "s/^__version__ = .*/__version__ = \"${{ steps.ver.outputs.version }}\"/" canctl_core/__init__.py
-          grep '^__version__' canctl_core/__init__.py
+          python - <<'PY'
+          import os, re, pathlib
+          p = pathlib.Path("canctl_core/__init__.py")
+          ver = os.environ["NEW_VERSION"]
+          text = re.sub(r'^__version__ = .*', f'__version__ = "{ver}"', p.read_text(), flags=re.M)
+          p.write_text(text)
+          print(next(l for l in text.splitlines() if l.startswith("__version__")))
+          PY
 
       # core/canctl-core.spec 은 .gitignore 의 `*.spec` 대상이라 CI 에 없다.
       # 따라서 spec 의 collect_all/collect_submodules 와 동일한 동작을 CLI
       # 플래그로 재현한다. (spec 을 고치면 이 플래그도 함께 맞출 것)
-      # 산출물: core/dist/canctl-core.exe (--onefile)
+      # 산출물: core/dist/canctl-core[.exe] (--onefile, OS별 확장자 차이)
       - name: 코어 패키징 (PyInstaller)
         working-directory: core
         run: >
@@ -98,10 +133,9 @@ jobs:
           pyinstaller_entry.py
 
       - name: 코어 산출물 확인
-        shell: bash
-        run: test -f core/dist/canctl-core.exe
+        run: test -f "core/dist/${{ matrix.core_bin }}"
 
-      # ── Electron UI → NSIS 설치본 ──────────────────────────────────────
+      # ── Electron UI → OS별 설치본 ──────────────────────────────────────
       - name: Node 설정
         uses: actions/setup-node@v4
         with:
@@ -123,20 +157,57 @@ jobs:
       #   날짜 태그의 선행 0 때문에 표시버전(2026.06.23)이 아닌 semver(2026.6.23)를 쓴다.
       #   CLI 의 '-c.x=y' 표기는 셸/yargs 파싱에 취약하므로, npm pkg set 으로
       #   package.json 에 직접 박아 electron-builder 가 그대로 읽게 한다(보호된 main 미수정).
+      # 타겟(nsis/dmg/AppImage)은 electron-builder.yml 의 OS별 target 을 따른다.
       # --publish never: 토큰이 env 에 있고 태그 트리거인 상태에서 electron-builder 가
-      #   스스로 릴리즈를 만들려다 아래 softprops 스텝과 충돌하는 것을 막는다.
+      #   스스로 릴리즈를 만들려다 아래 release 잡과 충돌하는 것을 막는다.
+      # CSC_IDENTITY_AUTO_DISCOVERY=false: macOS 에서 서명 인증서 자동 탐색을 끈다
+      #   (CI 에 인증서가 없을 때 서명 시도 실패를 막음). win/linux 에는 무해.
       - name: UI 패키징 (electron-builder)
         working-directory: ui
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: |
           npm pkg set version="${{ steps.ver.outputs.semver }}"
-          npx electron-builder --win nsis --publish never
+          npx electron-builder ${{ matrix.eb_platform }} --publish never
+
+      # OS별 설치본을 워크플로우 아티팩트로 업로드(이름은 OS별로 구분 — v4 는 중복 이름 거부).
+      # release 잡이 이 아티팩트들을 모두 받아 GitHub Release 에 첨부한다.
+      - name: 설치본 아티팩트 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.asset }}
+          path: ${{ matrix.installer_glob }}
+          if-no-files-found: error
+
+  # ── 릴리즈 발행: 세 OS 설치본을 모아 한 번에 GitHub Release 생성·첨부 ───────
+  # 별도 잡으로 분리한 이유: 각 OS 잡이 동시에 softprops 로 같은 태그의 릴리즈를
+  # 만들면 레이스가 난다. 빌드를 모두 모은 뒤 단일 지점에서 발행해야 안전하다.
+  release:
+    name: 릴리즈 발행
+    needs: build          # 세 OS 빌드가 모두 성공해야 발행(반쪽짜리 릴리즈 방지)
+    runs-on: ubuntu-latest
+    steps:
+      - name: 체크아웃 (태그·전체 이력 포함)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 세 OS 잡이 올린 installers-* 아티팩트를 한 디렉토리로 모은다.
+      - name: 설치본 아티팩트 다운로드
+        uses: actions/download-artifact@v4
+        with:
+          pattern: installers-*
+          path: installers
+          merge-multiple: true
+
+      - name: 첨부할 설치본 목록
+        run: ls -la installers
 
       # ── 릴리즈 노트: annotated 태그 메시지에서 추출 ─────────────────────
       - name: 릴리즈 노트 추출
         id: notes
-        shell: bash
         run: |
-          TAG="${{ steps.ver.outputs.tag }}"
+          TAG="${GITHUB_REF_NAME}"
           # checkout 이 annotated 태그 객체를 정확히 가져왔다는 보장이 약하므로 강제 재취득
           git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}" || true
           : > release_notes.md
@@ -152,24 +223,16 @@ jobs:
             echo "annotated 태그 메시지 없음 → GitHub 자동 생성 노트로 폴백."
           fi
 
-      - name: 릴리즈 생성 + 설치본 첨부
+      - name: 릴리즈 생성 + 설치본 첨부 (Win/Mac/Linux)
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ steps.ver.outputs.tag }}
+          name: ${{ github.ref_name }}
           body_path: release_notes.md
           # annotated 태그 메시지가 비어 있을 때만 GitHub 자동 노트로 보완
           generate_release_notes: ${{ steps.notes.outputs.fallback == 'true' }}
           # 하이픈 포함 태그(v2026.06.23-rc.1)는 프리릴리즈로 표시
           prerelease: ${{ contains(github.ref_name, '-') }}
-          # 빌드 산출물 중 하나라도 없으면 실패시켜 깨진 릴리즈를 막는다
+          # 첨부할 설치본이 하나도 없으면 실패시켜 깨진 릴리즈를 막는다
           fail_on_unmatched_files: true
           files: |
-            ui/dist/*.exe
-
-      # 워크플로우 실행 페이지에서도 설치본을 받을 수 있도록 아티팩트로도 업로드
-      - name: 설치본 아티팩트 업로드
-        uses: actions/upload-artifact@v4
-        with:
-          name: installers-${{ steps.ver.outputs.tag }}
-          path: ui/dist/*.exe
-          if-no-files-found: error
+            installers/**/*
