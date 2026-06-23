@@ -1,0 +1,166 @@
+name: release
+
+# "v2026.06.23"(vYYYY.MM.DD) 날짜식 태그가 푸시되면 트리거된다.
+# 주의: 아래 tags 필터는 정규식이 아니라 glob 패턴이다.
+#   - '.' 은 리터럴 점, '[0-9]' 는 숫자 1자리 → 4-2-2 자리 날짜를 정확히 매칭
+on:
+  push:
+    tags:
+      - "v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]"        # 정식 릴리즈: v2026.06.23
+      - "v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]-*"      # 프리릴리즈: v2026.06.23-rc.1
+
+# 릴리즈 생성 및 에셋 업로드에 쓰기 권한이 필요하다.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: 빌드 및 릴리즈
+    # 실장비가 Windows(Zadig WinUSB) 대상이고 코어 spec 도 Windows 기준이라
+    # 릴리즈 빌드는 Windows 전용. (mac/linux 는 추후 매트릭스로 확장 가능)
+    runs-on: windows-latest
+
+    steps:
+      - name: 체크아웃 (태그·전체 이력 포함)
+        uses: actions/checkout@v4
+        with:
+          # annotated 태그 메시지·전체 커밋 이력을 받기 위해 얕은 클론 해제
+          fetch-depth: 0
+
+      # 태그에서 버전을 도출한다.
+      #   version : 접두사 v 제거한 표시용 버전(2026.06.23) — 릴리즈 제목 등에 사용
+      #   semver  : electron-builder 가 요구하는 유효 semver. 날짜의 선행 0(06,23)은
+      #             semver 규칙상 허용되지 않으므로 각 세그먼트의 선행 0을 제거한다
+      #             (2026.06.23 → 2026.6.23, 프리릴리즈 -rc.1 은 그대로 보존).
+      - name: 버전 도출
+        id: ver
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          BASE="${VERSION%%-*}"                  # 2026.06.23
+          PRE=""
+          [ "$VERSION" != "$BASE" ] && PRE="-${VERSION#*-}"   # -rc.1
+          IFS='.' read -r Y M D <<< "$BASE"
+          # 10# 접두사로 10진 해석 → 선행 0 제거(08/09 8진수 오류도 회피)
+          SEMVER="$((10#$Y)).$((10#$M)).$((10#$D))${PRE}"
+          echo "tag=$TAG"         >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "semver=$SEMVER"   >> "$GITHUB_OUTPUT"
+          echo "태그=$TAG / 표시버전=$VERSION / semver=$SEMVER"
+
+      # ── Python 코어 → PyInstaller 단일 실행파일 ─────────────────────────
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: core/pyproject.toml
+
+      - name: 코어 의존성 + PyInstaller 설치
+        working-directory: core
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pyinstaller
+
+      # 코어 __version__ 을 태그 버전(표시용 2026.06.23)으로 주입한다.
+      #   로컬 소스는 0.0.0 placeholder 이고, 태그를 단일 버전 출처로 삼는다.
+      #   현재 __version__ 은 외부로 노출되지 않지만(로그·프로토콜 미사용),
+      #   향후 hello/로그에 실릴 때를 대비해 일관성을 위해 미리 맞춰 둔다.
+      - name: 코어 버전 주입
+        working-directory: core
+        shell: bash
+        run: |
+          sed -i "s/^__version__ = .*/__version__ = \"${{ steps.ver.outputs.version }}\"/" canctl_core/__init__.py
+          grep '^__version__' canctl_core/__init__.py
+
+      # core/canctl-core.spec 은 .gitignore 의 `*.spec` 대상이라 CI 에 없다.
+      # 따라서 spec 의 collect_all/collect_submodules 와 동일한 동작을 CLI
+      # 플래그로 재현한다. (spec 을 고치면 이 플래그도 함께 맞출 것)
+      # 산출물: core/dist/canctl-core.exe (--onefile)
+      - name: 코어 패키징 (PyInstaller)
+        working-directory: core
+        run: >
+          pyinstaller --onefile --console --name canctl-core
+          --collect-all canalystii
+          --collect-all libusb_package
+          --collect-all cantools
+          --collect-submodules can
+          --collect-submodules canctl_core
+          pyinstaller_entry.py
+
+      - name: 코어 산출물 확인
+        shell: bash
+        run: test -f core/dist/canctl-core.exe
+
+      # ── Electron UI → NSIS 설치본 + portable ───────────────────────────
+      - name: Node 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      # 패키징에는 Electron 런타임 바이너리가 필요하므로 SKIP 하지 않는다.
+      # (PR 게이트 build.yml 과 달리 ELECTRON_SKIP_BINARY_DOWNLOAD 미설정)
+      - name: UI 의존성 설치
+        working-directory: ui
+        run: npm ci
+
+      - name: UI 빌드 (electron-vite)
+        working-directory: ui
+        run: npm run build
+
+      # electron-builder 를 별도 스텝으로 분리하고 --publish never 를 명시한다.
+      #   토큰이 env 에 있고 태그 트리거인 상태에선 electron-builder 가 스스로
+      #   GitHub 릴리즈를 만들려다 아래 softprops 스텝과 충돌하므로 자동 publish 차단.
+      # -c.extraMetadata.version 으로 package.json 버전을 태그 버전(semver)으로 덮어써
+      #   설치본 파일명·앱 버전을 태그와 맞춘다(보호된 main 을 건드리지 않음).
+      #   날짜 태그의 선행 0 때문에 표시버전(2026.06.23)이 아닌 semver(2026.6.23)를 넘긴다.
+      - name: UI 패키징 (electron-builder)
+        working-directory: ui
+        run: npx electron-builder --win nsis portable --publish never -c.extraMetadata.version=${{ steps.ver.outputs.semver }}
+
+      # ── 릴리즈 노트: annotated 태그 메시지에서 추출 ─────────────────────
+      - name: 릴리즈 노트 추출
+        id: notes
+        shell: bash
+        run: |
+          TAG="${{ steps.ver.outputs.tag }}"
+          # checkout 이 annotated 태그 객체를 정확히 가져왔다는 보장이 약하므로 강제 재취득
+          git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}" || true
+          : > release_notes.md
+          if [ "$(git cat-file -t "$TAG" 2>/dev/null)" = "tag" ]; then
+            # %(contents) = annotated 태그 메시지 전체(제목+본문)
+            git tag -l --format='%(contents)' "$TAG" > release_notes.md
+          fi
+          if [ -s release_notes.md ]; then
+            echo "fallback=false" >> "$GITHUB_OUTPUT"
+            echo "릴리즈 노트를 annotated 태그 메시지에서 추출함."
+          else
+            echo "fallback=true" >> "$GITHUB_OUTPUT"
+            echo "annotated 태그 메시지 없음 → GitHub 자동 생성 노트로 폴백."
+          fi
+
+      - name: 릴리즈 생성 + 설치본 첨부
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.ver.outputs.tag }}
+          body_path: release_notes.md
+          # annotated 태그 메시지가 비어 있을 때만 GitHub 자동 노트로 보완
+          generate_release_notes: ${{ steps.notes.outputs.fallback == 'true' }}
+          # 하이픈 포함 태그(v2026.06.23-rc.1)는 프리릴리즈로 표시
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          # 빌드 산출물 중 하나라도 없으면 실패시켜 깨진 릴리즈를 막는다
+          fail_on_unmatched_files: true
+          files: |
+            ui/dist/*.exe
+
+      # 워크플로우 실행 페이지에서도 설치본을 받을 수 있도록 아티팩트로도 업로드
+      - name: 설치본 아티팩트 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ steps.ver.outputs.tag }}
+          path: ui/dist/*.exe
+          if-no-files-found: error

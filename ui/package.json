@@ -1,6 +1,6 @@
 {
   "name": "canalyst-ui",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "CANalyst-II 제어 UI (Electron + React)",
   "author": "litbig",
   "license": "MIT",
