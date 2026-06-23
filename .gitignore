@@ -25,6 +25,20 @@ core/dist/
 .DS_Store
 Thumbs.db
 
-# Claude 로컬 파일 (프로젝트 가이드 CLAUDE.md는 커밋함)
-.claude/
+# Claude 로컬 파일은 무시하되, 팀과 공유하는 프로젝트 자산은 추적한다.
+# (프로젝트 가이드 CLAUDE.md 는 .claude/ 밖이라 항상 커밋됨)
+# 주의 1: '.claude/' 로 디렉토리 전체를 막으면 하위를 재포함할 수 없으므로,
+#         자식만 막는 '.claude/*' + 개별 '!' 예외 패턴을 쓴다.
+# 주의 2: 개인용 설정(settings.local.json)·세션·worktrees 는 예외 목록에 없어
+#         계속 무시된다. 비밀·머신 종속 설정은 settings.local.json 에 둘 것.
+# 주의 3: '.gitignore' 는 줄 끝 인라인 주석을 지원하지 않으므로(패턴의 일부가 됨)
+#         예외 패턴 뒤에 설명을 붙이지 말 것.
+.claude/*
+# 공유 대상: 스킬 · 팀 공유 설정 · 커스텀 명령/서브에이전트/훅/워크플로우
+!.claude/skills/
+!.claude/settings.json
+!.claude/commands/
+!.claude/agents/
+!.claude/hooks/
+!.claude/workflows/
 CLAUDE.local.md
