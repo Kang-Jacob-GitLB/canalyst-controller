@@ -1,246 +1,222 @@
-# Design System Inspired by Spotify
+# Design System — LITBIG (잉크-다크 변주 / Ink-Dark variant)
+
+> Source of truth for `ui/src/renderer/src/index.css`. Brand derives from the
+> LITBIG design system (Korean Tier-1/2 automotive electronics — _Little but Big_).
+> This document describes the **ink-dark variant** used by the CANalyst-II
+> controller: the LITBIG brand's ink/orange/type/chamfer applied to a dark
+> surface family so the app stays comfortable for long CAN-traffic monitoring.
 
 ## 1. Visual Theme & Atmosphere
 
-Spotify's web interface is a dark, immersive music player that wraps listeners in a near-black cocoon (`#121212`, `#181818`, `#1f1f1f`) where album art and content become the primary source of color. The design philosophy is "content-first darkness" — the UI recedes into shadow so that music, podcasts, and playlists can glow. Every surface is a shade of charcoal, creating a theater-like environment where the only true color comes from the iconic Spotify Green (`#1ed760`) and the album artwork itself.
+LITBIG's identity is **restrained, technical, datasheet-confident** — the voice of an automotive-electronics supplier (AVN · SVM · Cluster · DSM · DVRS · QuadEYE). The mark is the system: a chamfered cube with a **square orange face** and a **chamfered dark side**. That **45° chamfer is the only signature shape**, and **orange `#FF6A13` is the only "loud" color** — it exists to mark the single most important thing on a surface, never to decorate.
 
-The typography uses SpotifyMixUI and SpotifyMixUITitle — proprietary fonts from the CircularSp family (Circular by Lineto, customized for Spotify) with an extensive fallback stack that includes Arabic, Hebrew, Cyrillic, Greek, Devanagari, and CJK fonts, reflecting Spotify's global reach. The type system is compact and functional: 700 (bold) for emphasis and navigation, 600 (semibold) for secondary emphasis, and 400 (regular) for body. Buttons use uppercase with positive letter-spacing (1.4px–2px) for a systematic, label-like quality.
+The LITBIG brand is white-by-default, but this app is a real-time CAN monitor used for long sessions. We therefore adopt the brand's sanctioned **ink (`#231815`) surface** (reserved in the brand for "brand moments") as the _entire_ surface family, deriving a **warm-ink dark ladder** from it. The philosophy is "content-first darkness": the UI recedes into warm near-black so the live RX/TX traffic — the only thing that matters — glows. Orange is spent on exactly that: the primary CTA, the live connection status, your own transmissions, and the hero throughput number.
 
-What distinguishes Spotify is its pill-and-circle geometry. Primary buttons use 500px–9999px radius (full pill), circular play buttons use 50% radius, and search inputs are 500px pills. Combined with heavy shadows (`rgba(0,0,0,0.5) 0px 8px 24px`) on elevated elements and a unique inset border-shadow combo (`rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset`), the result is an interface that feels like a premium audio device — tactile, rounded, and built for touch.
+Unlike a cool, blue-black dark theme, every neutral here is **warm-leaning**, harmonizing with the brown-black ink and the orange. Corners are **sharp** (the mark is angular); the chamfer is the only curve-alternative, used sparingly on brand moments.
 
 **Key Characteristics:**
-- Near-black immersive dark theme (`#121212`–`#1f1f1f`) — UI disappears behind content
-- Spotify Green (`#1ed760`) as singular brand accent — never decorative, always functional
-- SpotifyMixUI/CircularSp font family with global script support
-- Pill buttons (500px–9999px) and circular controls (50%) — rounded, touch-optimized
-- Uppercase button labels with wide letter-spacing (1.4px–2px)
-- Heavy shadows on elevated elements (`rgba(0,0,0,0.5) 0px 8px 24px`)
-- Semantic colors: negative red (`#f3727f`), warning orange (`#ffa42b`), announcement blue (`#539df5`)
-- Album art as the primary color source — the UI is achromatic by design
+- Warm-ink immersive dark theme (`#140d0b`–`#3d332f`), derived from brand ink `#231815` — UI recedes behind live traffic
+- Orange `#FF6A13` as the singular brand accent — functional only, kept under ~10% of any surface
+- Pretendard (UI/body) · Chakra Petch (display/wordmark) · JetBrains Mono (hex/specs/data) — all bundled offline
+- **Sharp** geometry: 2px controls, 4px cards. Pills reserved for status chips only. Chamfer (45°) is the signature shape
+- Korean-first copy; numerals/units/codes inline (`500,000 bps`, `0x18F`, `ISDB-T`)
+- Elevation from **borders + tonal shifts**, not heavy shadows
+- Semantic colors tuned for legibility on dark: danger `#f2685f`, warning `#e8a33d`, info `#5b95e0`, success `#34c77b`
+- The LITBIG mark (orange face + ink chamfered frame) is the brand anchor; inverse (white) on dark surfaces
 
 ## 2. Color Palette & Roles
 
 ### Primary Brand
-- **Spotify Green** (`#1ed760`): Primary brand accent — play buttons, active states, CTAs
-- **Near Black** (`#121212`): Deepest background surface
-- **Dark Surface** (`#181818`): Cards, containers, elevated surfaces
-- **Mid Dark** (`#1f1f1f`): Button backgrounds, interactive surfaces
+- **Orange** (`#ff6a13`): `--litbig-orange` / `--accent` — the only loud color. Primary CTA, live status, TX, hero number
+- **Orange Hover** (`#e85a04`): `--litbig-orange-600` / `--accent-bright` — filled-button hover (brand rule: darken on hover)
+- **Orange Press** (`#c44a00`): `--litbig-orange-700` / `--accent-press`
+- **Orange Soft** (`#ffa66b`): `--litbig-orange-300` — "quiet tint" for secondary signals (DBC decoded name, TX badge)
+- **Ink** (`#231815`): `--litbig-ink` — warm near-black from the wordmark; Level-1 surface and inverse base
+- **On-Orange** (`#ffffff`): `--on-accent` — text/icons on orange fills are white (brand)
 
-### Text
-- **White** (`#ffffff`): `--text-base`, primary text
-- **Silver** (`#b3b3b3`): Secondary text, muted labels, inactive nav
-- **Near White** (`#cbcbcb`): Slightly brighter secondary text
-- **Light** (`#fdfdfd`): Near-pure white for maximum emphasis
+### Surfaces (warm-ink depth ladder — depth via shade variation only)
+- **Base / Level 0** (`#1a1210`): `--bg-base` — page background
+- **Sidebar** (`#140d0b`): `--bg-sidebar` — deepest rail (the "library")
+- **Surface / Level 1** (`#231815`): `--bg-surface` — cards & panels (= brand ink)
+- **Input** (`#2e2522`): `--bg-input` / `--bg-card` — interactive surfaces, raised cards
+- **Hover** (`#3d332f`): `--bg-hover` — row/card hover
+- **Row Alt** (`#1f1613`): `--bg-row-alt`
 
-### Semantic
-- **Negative Red** (`#f3727f`): `--text-negative`, error states
-- **Warning Orange** (`#ffa42b`): `--text-warning`, warning states
-- **Announcement Blue** (`#539df5`): `--text-announcement`, info states
+### Text (warm whites)
+- **Base** (`#f5f1ee`): `--text-base` — primary text on ink (brand fg-on-ink)
+- **Near** (`#e8e0db`): `--text-near` — table cells, emphasis
+- **Secondary** (`#b4a8a1`): `--text-secondary` — labels, muted
+- **Muted** (`#897c74`): `--text-muted` — placeholders, meta, disabled-ish
 
-### Surface & Border
-- **Dark Card** (`#252525`): Elevated card surface
-- **Mid Card** (`#272727`): Alternate card surface
-- **Border Gray** (`#4d4d4d`): Button borders on dark
-- **Light Border** (`#7c7c7c`): Outlined button borders, muted links
-- **Separator** (`#b3b3b3`): Divider lines
-- **Light Surface** (`#eeeeee`): Light-mode buttons (rare)
-- **Spotify Green Border** (`#1db954`): Green accent border variant
+### Semantic (lightened for dark surfaces)
+- **Danger** (`#f2685f`): `--negative` — errors, destructive actions
+- **Warning** (`#e8a33d`): `--warning` — amber (deliberately off-orange to avoid clash); paused state, overwrite banners, demo/mock badge
+- **Info** (`#5b95e0`): `--info` — driver hints
+- **Success** (`#34c77b`): `--success`
 
-### Shadows
-- **Heavy** (`rgba(0,0,0,0.5) 0px 8px 24px`): Dialogs, menus, elevated panels
-- **Medium** (`rgba(0,0,0,0.3) 0px 8px 8px`): Cards, dropdowns
-- **Inset Border** (`rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset`): Input border-shadow combo
+### Border / Divider (warm ink)
+- **Border** (`#382c28`): `--border` — cards, inputs, row separators
+- **Border Strong** (`#4a3d38`): `--border-strong` — input rest border, strong dividers
+- **Border Light** (`#5c4e48`): `--border-light` — hover borders
+
+### Shadows (dark needs depth, but kept hardware-precise)
+- **Card** (`rgba(0,0,0,0.32) 0px 8px 16px`): `--shadow-card` — panels
+- **Dialog** (`rgba(0,0,0,0.5) 0px 12px 32px`): `--shadow-dialog` — modals/menus
+- **Orange** (`0 6px 20px rgba(255,106,19,0.3)`): `--shadow-orange` — **hero CTA hover only**
+- **Inset Input** (`inset 0 0 0 1px var(--border-strong)`): `--inset-input`
 
 ## 3. Typography Rules
 
-### Font Families
-- **Title**: `SpotifyMixUITitle`, fallbacks: `CircularSp-Arab, CircularSp-Hebr, CircularSp-Cyrl, CircularSp-Grek, CircularSp-Deva, Helvetica Neue, helvetica, arial, Hiragino Sans, Hiragino Kaku Gothic ProN, Meiryo, MS Gothic`
-- **UI / Body**: `SpotifyMixUI`, same fallback stack
+### Font Families (all bundled offline via `@fontsource` — no CDN, CSP-safe)
+- **Display** (`--font-display`): `Chakra Petch`, fallback `Pretendard` → system. The chamfered, geometric face used for the product wordmark and large numerics. **Substitute** for the custom LITBIG wordmark. **Latin-only — Korean glyphs fall back to Pretendard automatically** (intended).
+- **UI / Body** (`--font-ui`): `Pretendard`, fallback `Apple SD Gothic Neo`, `Malgun Gothic`, system. Single Korean+Latin family for all interface text.
+- **Mono** (`--font-mono`): `JetBrains Mono`, fallback `Cascadia Code`, `Consolas`, system. For part numbers, specs, **hex frames, and stacked/aligned numerics** — the core data font of a CAN tool.
+
+### Weight ladder & tracking
+- 400 body · 500 emphasis · 600 H4/H3 + display headings · 700 H1/H2 + wordmark
+- `--tracking-tight` (`-0.02em`): display headings (Latin)
+- `--tracking-caps` (`0.12em`): UPPERCASE eyebrow / section / table-head labels (Latin)
 
 ### Hierarchy
 
-| Role | Font | Size | Weight | Line Height | Letter Spacing | Notes |
-|------|------|------|--------|-------------|----------------|-------|
-| Section Title | SpotifyMixUITitle | 24px (1.50rem) | 700 | normal | normal | Bold title weight |
-| Feature Heading | SpotifyMixUI | 18px (1.13rem) | 600 | 1.30 (tight) | normal | Semibold section heads |
-| Body Bold | SpotifyMixUI | 16px (1.00rem) | 700 | normal | normal | Emphasized text |
-| Body | SpotifyMixUI | 16px (1.00rem) | 400 | normal | normal | Standard body |
-| Button Uppercase | SpotifyMixUI | 14px (0.88rem) | 600–700 | 1.00 (tight) | 1.4px–2px | `text-transform: uppercase` |
-| Button | SpotifyMixUI | 14px (0.88rem) | 700 | normal | 0.14px | Standard button |
-| Nav Link Bold | SpotifyMixUI | 14px (0.88rem) | 700 | normal | normal | Navigation |
-| Nav Link | SpotifyMixUI | 14px (0.88rem) | 400 | normal | normal | Inactive nav |
-| Caption Bold | SpotifyMixUI | 14px (0.88rem) | 700 | 1.50–1.54 | normal | Bold metadata |
-| Caption | SpotifyMixUI | 14px (0.88rem) | 400 | normal | normal | Metadata |
-| Small Bold | SpotifyMixUI | 12px (0.75rem) | 700 | 1.50 | normal | Tags, counts |
-| Small | SpotifyMixUI | 12px (0.75rem) | 400 | normal | normal | Fine print |
-| Badge | SpotifyMixUI | 10.5px (0.66rem) | 600 | 1.33 | normal | `text-transform: capitalize` |
-| Micro | SpotifyMixUI | 10px (0.63rem) | 400 | normal | normal | Smallest text |
+| Role | Font | Size | Weight | Tracking | Notes |
+|------|------|------|--------|----------|-------|
+| Product wordmark | Display | 1.18rem | 700 | tight | `CANalyst-II` (Latin → Chakra Petch) |
+| Panel header (h2) | Display | 1.05rem | 600 | tight | Korean falls back to Pretendard |
+| Section/eyebrow label | Display | 0.7rem | 600 | caps | UPPERCASE, `--text-secondary` |
+| Table head | Display | 0.68rem | 600 | caps | UPPERCASE, `--text-muted` |
+| Body / cells | UI | 0.82–0.85rem | 400–600 | normal | `--text-near` |
+| Label | UI | 0.74rem | 600 | normal | `--text-secondary` |
+| Hero stat number | Mono | 1.5rem | 600 | normal | tabular-nums; one accent value = orange |
+| Frame data / IDs | Mono | 0.84rem | 400 | normal | tabular hex |
+| Direction badge | Display | 0.66rem | 600 | 0.6px | pill chip |
 
 ### Principles
-- **Bold/regular binary**: Most text is either 700 (bold) or 400 (regular), with 600 used sparingly. This creates a clear visual hierarchy through weight contrast rather than size variation.
-- **Uppercase buttons as system**: Button labels use uppercase + wide letter-spacing (1.4px–2px), creating a systematic "label" voice distinct from content text.
-- **Compact sizing**: The range is 10px–24px — narrower than most systems. Spotify's type is compact and functional, designed for scanning playlists, not reading articles.
-- **Global script support**: The extensive fallback stack (Arabic, Hebrew, Cyrillic, Greek, Devanagari, CJK) reflects Spotify's 180+ market reach.
+- **Korean-first, never uppercase Korean.** The brand's uppercase + wide-tracking button voice is for **Latin labels only**. Buttons here carry Korean labels (`연결`, `송신`) in Pretendard, normal case, weight 600 — applying caps/tracking to Korean is wrong. Reserve UPPERCASE + `--tracking-caps` for Latin eyebrows, section titles, and table heads.
+- **Mono for data, sans for prose.** Hex, IDs, counts, and rates use JetBrains Mono with `tabular-nums` so columns align. User text (preset names, Korean copy) stays Pretendard — never mono.
+- **Display for brand moments only.** Chakra Petch on the wordmark, big stat numbers, and caps labels — not on body or buttons.
 
 ## 4. Component Stylings
 
-### Buttons
+### Buttons (sharp 2px — `--r-xs`)
+**Secondary (default)** — ink surface with a border for elevation
+- Background `--bg-input`, text `--text-near`, `1px solid --border-strong`, radius 2px, padding 8px 16px, weight 600
+- Hover: bg `--bg-hover`, border `--border-light`, text `--text-base`. Active: `translateY(1px)`
 
-**Dark Pill**
-- Background: `#1f1f1f`
-- Text: `#ffffff` or `#b3b3b3`
-- Padding: 8px 16px
-- Radius: 9999px (full pill)
-- Use: Navigation pills, secondary actions
+**Primary CTA** (`.btn-primary`) — connect / send / confirm
+- Background `--accent`, text `#fff`, border `--accent`, radius 2px
+- Hover (brand motion): bg `--accent-bright` (darken), `translateY(-1px)`, `--shadow-orange`
+- Press: bg `--accent-press`, `translateY(0)`, no shadow
 
-**Dark Large Pill**
-- Background: `#181818`
-- Text: `#ffffff`
-- Padding: 0px 43px
-- Radius: 500px
-- Use: Primary app navigation buttons
+**Destructive** (`.btn-danger`) — disconnect / stop logging / delete
+- Transparent, text + `1px` border `--negative`; hover fills `--negative` with `#fff` text
 
-**Light Pill**
-- Background: `#eeeeee`
-- Text: `#181818`
-- Radius: 500px
-- Use: Light-mode CTAs (cookie consent, marketing)
+### Cards & Panels (4px — `--r-md`)
+- Background `--bg-surface`, `1px solid --border`, radius 4px, `--shadow-card`
+- Elevation comes from the border + tonal shift, not large shadows
 
-**Outlined Pill**
-- Background: transparent
-- Text: `#ffffff`
-- Border: `1px solid #7c7c7c`
-- Padding: 4px 16px 4px 36px (asymmetric for icon)
-- Radius: 9999px
-- Use: Follow buttons, secondary actions
+### Inputs (sharp 2px)
+- Background `--bg-input`, no border, `--inset-input` (1px inset), radius 2px
+- Hover: inset border → `--border-light`
+- **Focus (brand):** orange inset border + `0 0 0 3px rgba(255,106,19,0.18)` glow
+- Invalid: inset `--negative`. Checkbox `accent-color: --accent`
 
-**Circular Play**
-- Background: `#1f1f1f`
-- Text: `#ffffff`
-- Padding: 12px
-- Radius: 50% (circle)
-- Use: Play/pause controls
+### Monitor table (the content)
+- Surface `--bg-surface`; sticky head in display caps, `--text-muted`
+- Rows separated by `1px --border`; cells `--text-near`, hex in mono
+- **DBC decoded name** = `--litbig-orange-300` (quiet tint, not full orange)
+- **Direction badge:** `.dir-rx` neutral ink chip (`--text-secondary`); `.dir-tx` orange-soft text on `--accent-tint` with a `1px` orange inset
+- **TX row** ("your transmissions"): `--accent-tint` background + `inset 3px 0 0 --accent` left accent — meaningful because your own sends are rare (small orange area)
+- Toolbar toggles `[aria-pressed=true]`: neutral "pressed" (`--bg-hover` + `--border-light`), **not** orange
 
-### Cards & Containers
-- Background: `#181818` or `#1f1f1f`
-- Radius: 6px–8px
-- No visible borders on most cards
-- Hover: slight background lightening
-- Shadow: `rgba(0,0,0,0.3) 0px 8px 8px` on elevated
-
-### Inputs
-- Search input: `#1f1f1f` background, `#ffffff` text
-- Radius: 500px (pill)
-- Padding: 12px 96px 12px 48px (icon-aware)
-- Focus: border becomes `#000000`, outline `1px solid`
-
-### Navigation
-- Dark sidebar with SpotifyMixUI 14px weight 700 for active, 400 for inactive
-- `#b3b3b3` muted color for inactive items, `#ffffff` for active
-- Circular icon buttons (50% radius)
-- Spotify logo top-left in green
+### Status chips (pill — the one place pills are allowed)
+- `--r-pill`; mock/demo badge in warning amber; connection dot colors: live=orange, error=danger, dropped=warning, connecting=muted
 
 ## 5. Layout Principles
 
-### Spacing System
-- Base unit: 8px
-- Scale: 1px, 2px, 3px, 4px, 5px, 6px, 8px, 10px, 12px, 14px, 15px, 16px, 20px
+### Spacing (8px base) — `--sp-1..6`
+`4 · 8 · 12 · 16 · 20 · 24`
 
 ### Grid & Container
-- Sidebar (fixed) + main content area
-- Grid-based album/playlist cards
-- Full-width now-playing bar at bottom
-- Responsive content area fills remaining space
+- **Sidebar** (`--sidebar-w` 268px, the "library": brand + status + connect + tools) **| Main** (monitor as the hero, full height) **+ right Rail** (`--rail-w` 340px: stats + TX + DBC, independent scroll)
+- No vertical stacking of the monitor — it owns full height so growing logs never shrink it
 
-### Whitespace Philosophy
-- **Dark compression**: Spotify packs content densely — playlist grids, track lists, and navigation are all tightly spaced. The dark background provides visual rest between elements without needing large gaps.
-- **Content density over breathing room**: This is an app, not a marketing site. Every pixel serves the listening experience.
+### Border-radius scale (sharp by default)
+- `--r-xs` 2px — controls (buttons, inputs)
+- `--r-sm` 4px — small cards, table-wrap
+- `--r-md` 4px — panels/cards
+- `--r-lg` 8px — large card / modal
+- `--r-pill` 999px — **status chips only**
+- **Chamfer** (`--chamfer-sm`/`--chamfer-md`): the 45°-cut signature, for brand moments — used sparingly (never "everywhere", or it stops reading as deliberate)
 
-### Border Radius Scale
-- Minimal (2px): Badges, explicit tags
-- Subtle (4px): Inputs, small elements
-- Standard (6px): Album art containers, cards
-- Comfortable (8px): Sections, dialogs
-- Medium (10px–20px): Panels, overlay elements
-- Large (100px): Large pill buttons
-- Pill (500px): Primary buttons, search input
-- Full Pill (9999px): Navigation pills, search
-- Circle (50%): Play buttons, avatars, icons
+### Whitespace
+- Dense within a panel (engineering tool, not a marketing page); breathing room comes from the warm-ink surface contrast between panels, not large gaps.
 
 ## 6. Depth & Elevation
 
 | Level | Treatment | Use |
 |-------|-----------|-----|
-| Base (Level 0) | `#121212` background | Deepest layer, page background |
-| Surface (Level 1) | `#181818` or `#1f1f1f` | Cards, sidebar, containers |
-| Elevated (Level 2) | `rgba(0,0,0,0.3) 0px 8px 8px` | Dropdown menus, hover cards |
-| Dialog (Level 3) | `rgba(0,0,0,0.5) 0px 8px 24px` | Modals, overlays, menus |
-| Inset (Border) | `rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset` | Input borders |
+| Base (Level 0) | `#1a1210` | Page background |
+| Sidebar | `#140d0b` | Deepest rail |
+| Surface (Level 1) | `#231815` (= ink) + `1px --border` | Cards, panels |
+| Interactive | `#2e2522` | Inputs, buttons, raised cards |
+| Hover | `#3d332f` | Rows, cards |
+| Card shadow | `rgba(0,0,0,0.32) 0 8px 16px` | Panels |
+| Dialog | `rgba(0,0,0,0.5) 0 12px 32px` | Modals/menus |
 
-**Shadow Philosophy**: Spotify uses notably heavy shadows for a dark-themed app. The 0.5 opacity shadow at 24px blur creates a dramatic "floating in darkness" effect for dialogs and menus, while the 0.3 opacity at 8px blur provides a more subtle card lift. The unique inset border-shadow combination on inputs creates a recessed, tactile quality.
+**Shadow philosophy:** restrained and hardware-precise. Elevation reads primarily through **1px warm borders and tonal steps** in the ink ladder; shadows add a subtle lift on panels. The only orange shadow (`--shadow-orange`) is reserved for the hero CTA on hover.
 
 ## 7. Do's and Don'ts
 
 ### Do
-- Use near-black backgrounds (`#121212`–`#1f1f1f`) — depth through shade variation
-- Apply Spotify Green (`#1ed760`) only for play controls, active states, and primary CTAs
-- Use pill shape (500px–9999px) for all buttons — circular (50%) for play controls
-- Apply uppercase + wide letter-spacing (1.4px–2px) on button labels
-- Keep typography compact (10px–24px range) — this is an app, not a magazine
-- Use heavy shadows (`0.3–0.5 opacity`) for elevated elements on dark backgrounds
-- Let album art provide color — the UI itself is achromatic
+- Build surfaces from the **warm-ink ladder** (`#140d0b`–`#3d332f`) — depth through warm shade variation
+- Spend orange on **the one thing that matters** per surface: primary CTA, live status, your own TX, the hero rate number
+- Keep **sharp corners** (2px controls, 4px cards); pills only for status chips; chamfer only for rare brand moments
+- Use **JetBrains Mono + tabular-nums** for all hex/IDs/counts so columns align
+- Keep Korean labels in **Pretendard, normal case**; reserve display caps/tracking for Latin labels
+- Show elevation through **borders + tonal shifts**, with restrained shadows
 
 ### Don't
-- Don't use Spotify Green decoratively or on backgrounds — it's functional only
-- Don't use light backgrounds for primary surfaces — the dark immersion is core
-- Don't skip the pill/circle geometry on buttons — square buttons break the identity
-- Don't use thin/subtle shadows — on dark backgrounds, shadows need to be heavy to be visible
-- Don't add additional brand colors — green + achromatic grays is the complete palette
-- Don't use relaxed line-heights — Spotify's typography is compact and dense
-- Don't expose raw gray borders — use shadow-based or inset borders instead
+- **Don't mechanically turn every old green into orange.** If a page is more than ~10% orange, pull it back to ink/neutral (decoded names, active toggles, secondary values stay quiet)
+- Don't use cool/blue grays — they clash with the warm ink + orange
+- Don't pill or heavily round buttons — square-ish (2px) is the identity; the chamfer is the only flourish
+- Don't apply UPPERCASE / wide tracking to Korean text — it only suits Latin
+- Don't use mono for prose or user-entered names; don't use Chakra Petch for body
+- Don't reach for CDN fonts — everything is bundled offline (Electron/CSP)
 
 ## 8. Responsive Behavior
 
-### Breakpoints
-| Name | Width | Key Changes |
-|------|-------|-------------|
-| Mobile Small | <425px | Compact mobile layout |
-| Mobile | 425–576px | Standard mobile |
-| Tablet | 576–768px | 2-column grid |
-| Tablet Large | 768–896px | Expanded layout |
-| Desktop Small | 896–1024px | Sidebar visible |
-| Desktop | 1024–1280px | Full desktop layout |
-| Large Desktop | >1280px | Expanded grid |
+### Breakpoints (from `index.css`)
+| Width | Key changes |
+|-------|-------------|
+| > 1120px | Full layout: sidebar · monitor · right rail |
+| ≤ 1120px | Right rail drops **below** the monitor and flows as wrapping cards (`flex 1 1 280px`); console scrolls |
+| ≤ 860px | Sidebar moves to the **top**, app height becomes auto; rail stacks vertically |
 
-### Collapsing Strategy
-- Sidebar: full → collapsed → hidden
-- Album grid: 5 columns → 3 → 2 → 1
-- Now-playing bar: maintained at all sizes
-- Search: pill input maintained, width adjusts
-- Navigation: sidebar → bottom bar on mobile
+### Principles
+- The monitor always remains the hero and keeps its own scroll region.
+- Honors `prefers-reduced-motion`: transitions disabled; the error-panel "new error" cue degrades to a background flash only.
 
 ## 9. Agent Prompt Guide
 
 ### Quick Color Reference
-- Background: Near Black (`#121212`)
-- Surface: Dark Card (`#181818`)
-- Text: White (`#ffffff`)
-- Secondary text: Silver (`#b3b3b3`)
-- Accent: Spotify Green (`#1ed760`)
-- Border: `#4d4d4d`
-- Error: Negative Red (`#f3727f`)
+- Background: `#1a1210` (base) · `#140d0b` (sidebar) · `#231815` (surface = ink)
+- Text: `#f5f1ee` (base) · `#b4a8a1` (secondary) · `#897c74` (muted)
+- Accent: Orange `#ff6a13` (hover `#e85a04`, press `#c44a00`, soft `#ffa66b`)
+- Border: `#382c28` (strong `#4a3d38`)
+- Danger `#f2685f` · Warning `#e8a33d` · Info `#5b95e0` · Success `#34c77b`
 
 ### Example Component Prompts
-- "Create a dark card: #181818 background, 8px radius. Title at 16px SpotifyMixUI weight 700, white text. Subtitle at 14px weight 400, #b3b3b3. Shadow rgba(0,0,0,0.3) 0px 8px 8px on hover."
-- "Design a pill button: #1f1f1f background, white text, 9999px radius, 8px 16px padding. 14px SpotifyMixUI weight 700, uppercase, letter-spacing 1.4px."
-- "Build a circular play button: Spotify Green (#1ed760) background, #000000 icon, 50% radius, 12px padding."
-- "Create search input: #1f1f1f background, white text, 500px radius, 12px 48px padding. Inset border: rgb(124,124,124) 0px 0px 0px 1px inset."
-- "Design navigation sidebar: #121212 background. Active items: 14px weight 700, white. Inactive: 14px weight 400, #b3b3b3."
+- "Card: `#231815` background, `1px solid #382c28`, 4px radius, `rgba(0,0,0,0.32) 0 8px 16px`. Header in Chakra Petch 1.05rem weight 600 (Korean → Pretendard)."
+- "Primary button: orange `#ff6a13`, white text, 2px radius, 8px 16px, Pretendard weight 600. Hover → `#e85a04`, `translateY(-1px)`, orange glow shadow. (No uppercase — Korean label.)"
+- "Input: `#2e2522`, `inset 0 0 0 1px #4a3d38`, 2px radius. Focus → orange inset + `0 0 0 3px rgba(255,106,19,.18)`."
+- "Monitor row: cells `#e8e0db` in JetBrains Mono tabular-nums. TX row → `rgba(255,106,19,.14)` bg + `inset 3px 0 0 #ff6a13` left accent."
+- "Hero stat: JetBrains Mono 1.5rem weight 600, orange `#ff6a13`. Other stats stay `#f5f1ee`."
 
 ### Iteration Guide
-1. Start with #121212 — everything lives in near-black darkness
-2. Spotify Green for functional highlights only (play, active, CTA)
-3. Pill everything — 500px for large, 9999px for small, 50% for circular
-4. Uppercase + wide tracking on buttons — the systematic label voice
-5. Heavy shadows (0.3–0.5 opacity) for elevation — light shadows are invisible on dark
-6. Album art provides all the color — the UI stays achromatic
+1. Start from the warm-ink ladder — everything lives in warm near-black, not cool charcoal.
+2. Spend orange once per surface (CTA / live / TX / hero number); push everything else to ink/neutral.
+3. Sharp corners (2px / 4px); pills only for status chips; chamfer only for a deliberate brand moment.
+4. JetBrains Mono + tabular-nums for data; Pretendard for Korean; Chakra Petch for the wordmark and big numbers.
+5. Elevate with borders + tonal steps; keep shadows restrained (orange shadow = hero CTA only).
+6. The live CAN traffic is the only thing that should glow — keep the chrome quiet.
