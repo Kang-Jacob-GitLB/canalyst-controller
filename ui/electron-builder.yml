@@ -25,13 +25,12 @@ extraResources:
   - from: ../core/dist
     to: core
 
-# Windows: NSIS 설치본 + portable 동시 생성
+# Windows: NSIS 설치본만 생성(배포는 설치 프로그램으로 단일화).
 # icon 은 build/icon.png(512px) 를 명시. NSIS 용 .ico 는 electron-builder 가 PNG 에서 자동 생성한다.
 win:
   icon: build/icon.png
   target:
     - nsis
-    - portable
 nsis:
   oneClick: false
   perMachine: false

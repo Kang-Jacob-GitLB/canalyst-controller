@@ -101,7 +101,7 @@ jobs:
         shell: bash
         run: test -f core/dist/canctl-core.exe
 
-      # ── Electron UI → NSIS 설치본 + portable ───────────────────────────
+      # ── Electron UI → NSIS 설치본 ──────────────────────────────────────
       - name: Node 설정
         uses: actions/setup-node@v4
         with:
@@ -129,7 +129,7 @@ jobs:
         working-directory: ui
         run: |
           npm pkg set version="${{ steps.ver.outputs.semver }}"
-          npx electron-builder --win nsis portable --publish never
+          npx electron-builder --win nsis --publish never
 
       # ── 릴리즈 노트: annotated 태그 메시지에서 추출 ─────────────────────
       - name: 릴리즈 노트 추출
