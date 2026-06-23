@@ -1,9 +1,14 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import ConnectionBar from './ConnectionBar'
 
 const devices = [{ index: 0, name: 'Mock CANalyst-II', channels: 2 }]
+
+// 일부 테스트가 window.canctl(Electron 브리지)을 모킹하므로 매 테스트 후 정리
+afterEach(() => {
+  delete window.canctl
+})
 
 // localStorage 격리는 vitest.setup.js 의 전역 afterEach(localStorage.clear()) 가 담당
 
@@ -105,6 +110,57 @@ describe('ConnectionBar', () => {
 
     await user.click(screen.getByText('연결'))
     expect(onConnect).toHaveBeenCalledWith(0, 0, 250000)
+  })
+
+  it('장치 0개 + WinUSB 아님 → Zadig 안내 노출, 버튼이 외부 링크 호출', async () => {
+    window.canctl = {
+      checkDriver: vi.fn().mockResolvedValue({ state: 'wrong-driver', services: ['usbccgp'] }),
+      openExternal: vi.fn()
+    }
+    render(
+      <ConnectionBar
+        devices={[]}
+        status={{ connected: false }}
+        onConnect={() => {}}
+        onDisconnect={() => {}}
+        onRefresh={() => {}}
+      />
+    )
+    // 비동기 진단 결과가 반영되어 WinUSB 안내가 떠야 한다
+    expect(await screen.findByText(/WinUSB 드라이버가 아닙니다/)).toBeInTheDocument()
+    await userEvent.setup().click(screen.getByText('Zadig 받기'))
+    expect(window.canctl.openExternal).toHaveBeenCalledWith('https://zadig.akeo.ie/')
+  })
+
+  it('장치 0개 + 미연결 → 드라이버 상태 조회(checkDriver) 호출', async () => {
+    const checkDriver = vi.fn().mockResolvedValue({ state: 'absent', services: [] })
+    window.canctl = { checkDriver, openExternal: vi.fn() }
+    render(
+      <ConnectionBar
+        devices={[]}
+        status={{ connected: false }}
+        onConnect={() => {}}
+        onDisconnect={() => {}}
+        onRefresh={() => {}}
+      />
+    )
+    expect(await screen.findByText(/장치가 보이지 않습니다/)).toBeInTheDocument()
+    expect(checkDriver).toHaveBeenCalled()
+  })
+
+  it('장치가 있으면 드라이버 진단을 하지 않는다', () => {
+    const checkDriver = vi.fn()
+    window.canctl = { checkDriver }
+    render(
+      <ConnectionBar
+        devices={devices}
+        status={{ connected: false }}
+        onConnect={() => {}}
+        onDisconnect={() => {}}
+        onRefresh={() => {}}
+      />
+    )
+    expect(checkDriver).not.toHaveBeenCalled()
   })
 
   it('영속: 사용자 지정 값 입력 후 재마운트해도 모드/값 유지', async () => {

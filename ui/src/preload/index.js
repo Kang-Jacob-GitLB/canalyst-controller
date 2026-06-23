@@ -7,5 +7,9 @@ contextBridge.exposeInMainWorld('canctl', {
   coreUrl: `ws://127.0.0.1:${CORE_PORT}`,
   corePort: CORE_PORT,
   pickOpenFile: (options) => ipcRenderer.invoke('pick-open-file', options),
-  pickSaveFile: (options) => ipcRenderer.invoke('pick-save-file', options)
+  pickSaveFile: (options) => ipcRenderer.invoke('pick-save-file', options),
+  // CANalyst-II WinUSB 드라이버 상태 조회(장치 미검출 원인 안내용)
+  checkDriver: () => ipcRenderer.invoke('check-driver'),
+  // 외부 링크 열기(Zadig 안내 등). main 에서 https 만 허용.
+  openExternal: (url) => ipcRenderer.invoke('open-external', url)
 })

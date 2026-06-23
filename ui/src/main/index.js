@@ -1,7 +1,8 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'path'
 import { spawn, execFileSync } from 'child_process'
 import { loadWindowState, saveWindowState, isWithinDisplay } from './windowState'
+import { checkCanalystDriver } from './driverCheck'
 
 const CORE_PORT = 8765
 //: 종료 시 코어가 stdin EOF 를 받고 스스로 graceful 종료(장비 해제)할 때까지 기다리는 시간(ms).
@@ -105,6 +106,15 @@ ipcMain.handle('pick-save-file', async (_event, options = {}) => {
   })
   return result.canceled ? null : result.filePath
 })
+
+// CANalyst-II WinUSB 드라이버 상태 조회. 장치가 안 보일 때 렌더러가 "장치 없음"의
+// 원인(미연결 / 드라이버가 WinUSB 아님)을 사용자에게 안내하는 데 쓴다.
+ipcMain.handle('check-driver', () => checkCanalystDriver())
+
+// 외부 링크 열기(Zadig 안내 등). https 만 허용해 임의 스킴 실행을 막는다.
+ipcMain.handle('open-external', (_event, url) =>
+  typeof url === 'string' && /^https:\/\//i.test(url) ? shell.openExternal(url) : false
+)
 
 function createWindow() {
   // 이전 세션의 창 상태를 복원. 위치는 현재 디스플레이 안일 때만 적용한다.

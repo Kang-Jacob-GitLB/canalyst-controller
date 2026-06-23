@@ -1,7 +1,40 @@
+import { useEffect, useState } from 'react'
 import { usePersistentState } from '../hooks/usePersistentState'
 
 // 표준 비트레이트(canalystii 는 임의값도 받지만 표준값 권장 → 드롭다운 고정)
 const BITRATES = [10000, 20000, 50000, 100000, 125000, 250000, 500000, 800000, 1000000]
+
+// WinUSB 드라이버 교체 도구. main 의 open-external 이 https 만 허용한다.
+const ZADIG_URL = 'https://zadig.akeo.ie/'
+
+// 장치가 안 보일 때 그 원인(드라이버 상태)을 사용자에게 안내한다.
+// hint.state: 'wrong-driver' | 'absent' | 'ok' | 'unsupported' | 'unknown'
+function DriverHint({ hint }) {
+  if (hint.state === 'wrong-driver') {
+    return (
+      <div className="driver-hint driver-hint-warn" role="status">
+        <p>
+          CANalyst-II 장치가 감지됐지만 <b>WinUSB 드라이버가 아닙니다</b>
+          {hint.services?.length ? ` (현재 드라이버: ${hint.services.join(', ')})` : ''}. 이
+          앱은 WinUSB 로만 장치에 접근하므로, Zadig 로 드라이버를 WinUSB 로 한 번 바꿔야
+          연결됩니다.
+        </p>
+        <button type="button" onClick={() => window.canctl?.openExternal?.(ZADIG_URL)}>
+          Zadig 받기
+        </button>
+      </div>
+    )
+  }
+  if (hint.state === 'absent') {
+    return (
+      <p className="driver-hint" role="status">
+        CANalyst-II 장치가 보이지 않습니다. USB 연결을 확인한 뒤 “장치 새로고침”을 눌러 주세요.
+      </p>
+    )
+  }
+  // ok(드라이버 정상인데 목록이 빈 드문 경우)·unsupported(비-Windows)·unknown: 별도 안내 없음
+  return null
+}
 
 // 드롭다운에서 "사용자 지정" 항목을 식별하는 sentinel.
 // 'canctl.conn.bitrate' 에는 절대 들어가지 않고 select value 로만 쓰인다.
@@ -24,6 +57,27 @@ export default function ConnectionBar({ devices, status, onConnect, onDisconnect
   // 사용자 지정 입력값(controlled, 문자열로 보존 — 빈칸/입력중 상태 표현 위해)
   const [bitrateCustom, setBitrateCustom] = usePersistentState('canctl.conn.bitrateCustom', '')
   const connected = !!status?.connected
+
+  // 장치가 0개이고 미연결일 때만, 왜 안 보이는지(미연결/드라이버 문제)를 진단한다.
+  const [driverHint, setDriverHint] = useState(null)
+  const noDevices = !connected && devices.length === 0
+  useEffect(() => {
+    if (!noDevices) {
+      setDriverHint(null)
+      return
+    }
+    const check = window.canctl?.checkDriver
+    if (typeof check !== 'function') return // 비-Electron(테스트) 환경: 진단 생략
+    let cancelled = false
+    check()
+      .then((r) => {
+        if (!cancelled) setDriverHint(r)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [noDevices])
 
   const isCustom = bitrateMode === CUSTOM
   const customValue = parseCustomBitrate(bitrateCustom)
@@ -111,6 +165,8 @@ export default function ConnectionBar({ devices, status, onConnect, onDisconnect
       <button onClick={onRefresh} disabled={connected}>
         장치 새로고침
       </button>
+
+      {noDevices && driverHint && <DriverHint hint={driverHint} />}
 
       {customInvalid && (
         <p className="app-error">비트레이트는 양의 정수(bps)여야 합니다.</p>

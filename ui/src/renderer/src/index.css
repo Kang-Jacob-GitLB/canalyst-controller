@@ -488,6 +488,29 @@ button:focus-visible {
   margin-top: 2px;
 }
 
+/* 장치 미검출 원인 안내(드라이버 상태). 기본은 정보 톤, 경고형은 WinUSB 안내. */
+.driver-hint {
+  margin: 4px 0 0;
+  padding: var(--sp-2);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border-radius: var(--r-sm);
+  border-left: 3px solid var(--info);
+}
+.driver-hint p {
+  margin: 0;
+}
+.driver-hint-warn {
+  color: var(--text-near);
+  border-left-color: var(--warning);
+}
+.driver-hint-warn button {
+  width: 100%;
+  margin-top: var(--sp-2);
+}
+
 /* ============================================================
    도구 패널(필터/로깅/재생/DBC/내보내기) — 사이드바의 "라이브러리"
    ============================================================ */
