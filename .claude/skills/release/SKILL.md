@@ -139,14 +139,21 @@ git log $RANGE --no-merges --pretty=format:'%h %s%n%b'    # 제목+본문 모두
 
 ### 5. annotated 태그 생성 + 푸시
 
-노트를 임시 파일로 써서 `-F` 로 태그 메시지에 넣으면 줄바꿈·마크다운이 그대로
-보존된다(`-m` 여러 개로 짜맞추지 말 것).
+노트를 임시 파일로 써서 `-F` 로 태그 메시지에 넣는다(`-m` 여러 개로 짜맞추지 말 것).
+
+**반드시 `--cleanup=verbatim` 을 쓴다.** `git tag -a -F` 의 기본값은
+`--cleanup=strip` 이라 **`#` 로 시작하는 줄을 주석으로 보고 삭제**한다. 그러면
+`## ✨ 새 기능` 같은 마크다운 헤더가 통째로 사라져 릴리즈 본문이 망가진다(실제로
+겪은 함정). `verbatim` 은 메시지를 한 글자도 바꾸지 않고 그대로 보존한다.
 
 ```bash
 # 노트를 파일로 저장 (예: $TMP/release_notes.md)
-git tag -a "v2026.06.23" -F "$TMP/release_notes.md"
+git tag -a "v2026.06.23" --cleanup=verbatim -F "$TMP/release_notes.md"
 git push origin "v2026.06.23"
 ```
+
+생성 후 `git tag -l --format='%(contents)' "<태그>"` 로 `## ` 헤더가 살아있는지
+한 번 확인하면 안전하다.
 
 태그는 브랜치가 아니므로 보호 ruleset(main push 차단)과 무관하게 푸시된다. 만약
 태그 푸시 자체가 거부되면 태그 보호 ruleset 이 있는 것이니 사용자에게 알린다.
