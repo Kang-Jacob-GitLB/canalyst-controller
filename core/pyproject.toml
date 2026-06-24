@@ -1,5 +1,7 @@
 [project]
-name = "canctl-core"
+# 배포 실행파일/명령 이름은 canalyst-core(멀티콜: server|cli|mcp).
+# 파이썬 import 패키지명은 호환을 위해 canctl_core 로 유지한다.
+name = "canalyst-core"
 # 0.0.0 = 미릴리즈 dev placeholder. 실제 버전은 release 워크플로우가
 # 태그(vYYYY.MM.DD)에서 빌드 시점에 주입한다(직접 커밋하지 않음).
 version = "0.0.0"
@@ -14,6 +16,17 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+# MCP 서버 모드(`canalyst-core mcp`)용. GUI 사이드카(서버/CLI)에는 불필요하므로
+# 코어 의존성이 아닌 옵션으로 둔다. 동결 바이너리에 mcp 모드를 넣으려면 빌드 시
+# `pip install -e .[mcp]` + PyInstaller `--collect-all mcp` 가 필요하다.
+mcp = ["mcp>=1.6"]
+
+[project.scripts]
+# 멀티콜 명령(동결 바이너리와 동일 규약): 인자 없으면 서버, `cli`/`mcp` 로 분기.
+#   canalyst-core --mock        → 서버
+#   canalyst-core cli <명령>     → AI/스크립트용 CLI
+#   canalyst-core mcp           → 로컬 MCP 서버(stdio)
+canalyst-core = "canctl_core.multicall:main"
 
 [build-system]
 requires = ["setuptools>=61"]

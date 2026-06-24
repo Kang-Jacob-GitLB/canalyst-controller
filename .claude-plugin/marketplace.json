@@ -1,0 +1,16 @@
+{
+  "name": "canalyst-controller",
+  "owner": {
+    "name": "Litbig"
+  },
+  "metadata": {
+    "description": "CANalyst-II 제어 도구 — Claude 플러그인 마켓플레이스"
+  },
+  "plugins": [
+    {
+      "name": "canalyst",
+      "source": "./canalyst-plugin",
+      "description": "CANalyst-II CAN 버스 라이브 제어(MCP): connect/send/capture/stream/wait_for. 코어(canalyst-core) 설치 필요."
+    }
+  ]
+}

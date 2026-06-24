@@ -31,7 +31,7 @@ function startCore() {
   let cwd
   if (app.isPackaged) {
     // 패키징: resources/core/ 에 동봉된 PyInstaller 바이너리
-    const exe = process.platform === 'win32' ? 'canctl-core.exe' : 'canctl-core'
+    const exe = process.platform === 'win32' ? 'canalyst-core.exe' : 'canalyst-core'
     cwd = join(process.resourcesPath, 'core')
     command = join(cwd, exe)
     args = coreArgs

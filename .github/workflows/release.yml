@@ -42,7 +42,7 @@ jobs:
         #         arm64/dmg, x86_64/AppImage 로 자동 치환되게 한다(향후 멀티아치 대응).
         include:
           - os: windows-latest
-            core_bin: canctl-core.exe
+            core_bin: canalyst-core.exe
             eb_platform: "--win"
             installer_glob: "ui/dist/*.exe"
             asset: win
@@ -51,14 +51,14 @@ jobs:
           # macos-latest 는 현재 arm64(Apple Silicon) 러너 → 산출물은 arm64 전용 dmg.
           # Intel Mac 용은 별도 빌드가 필요(코어 PyInstaller 도 universal 이어야 함) — 범위 밖.
           - os: macos-latest
-            core_bin: canctl-core
+            core_bin: canalyst-core
             eb_platform: "--mac"
             installer_glob: "ui/dist/*.dmg"
             asset: mac
             art_target: dmg
             art_tail: "mac-${arch}.${ext}"
           - os: ubuntu-latest
-            core_bin: canctl-core
+            core_bin: canalyst-core
             eb_platform: "--linux"
             installer_glob: "ui/dist/*.AppImage"
             asset: linux
@@ -136,14 +136,19 @@ jobs:
           print(next(l for l in text.splitlines() if l.startswith("__version__")))
           PY
 
-      # core/canctl-core.spec 은 .gitignore 의 `*.spec` 대상이라 CI 에 없다.
+      # core/canalyst-core.spec 은 .gitignore 의 `*.spec` 대상이라 CI 에 없다.
       # 따라서 spec 의 collect_all/collect_submodules 와 동일한 동작을 CLI
       # 플래그로 재현한다. (spec 을 고치면 이 플래그도 함께 맞출 것)
-      # 산출물: core/dist/canctl-core[.exe] (--onefile, OS별 확장자 차이)
+      # 산출물: core/dist/canalyst-core[.exe] (--onefile, OS별 확장자 차이)
+      # 멀티콜: pyinstaller_entry → canctl_core.multicall 이 server|cli|mcp 분기.
+      #   cli 는 --collect-submodules canctl_core 로 자동 포함된다.
+      #   MCP 모드(canalyst-core mcp)까지 동결하려면 위 의존성 설치에 `.[mcp]` 를 쓰고
+      #   여기에 `--collect-all mcp` 를 추가해야 한다(mcp/pydantic 번들은 finicky →
+      #   현재 미검증이라 기본 빌드에는 넣지 않음. 검증 후 opt-in 할 것).
       - name: 코어 패키징 (PyInstaller)
         working-directory: core
         run: >
-          pyinstaller --onefile --console --name canctl-core
+          pyinstaller --onefile --console --name canalyst-core
           --collect-all canalystii
           --collect-all libusb_package
           --collect-all cantools

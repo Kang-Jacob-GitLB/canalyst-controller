@@ -4,8 +4,37 @@ CANalyst-II 제어 데스크톱 앱. Python 코어(CAN + WebSocket) + Electron/R
 
 ## 진입점
 
-- 코어: `core/canctl_core/__main__.py` → `python -m canctl_core [--mock] [--port 8765]`
-- UI: `ui/src/main/index.js`(Electron main) → 앱 시작 시 Python 코어를 사이드카로 spawn
+배포 실행파일/명령 이름은 **`canalyst-core`**(멀티콜), 파이썬 import 패키지명은
+호환을 위해 **`canctl_core`** 유지. 멀티콜 분기는 `canctl_core/multicall.py` 가 담당하고,
+동결 바이너리(`pyinstaller_entry.py`)와 pip 콘솔 스크립트(`canalyst-core`)가 이를 공유:
+
+- 서버: `canalyst-core [--mock --port 8765]` (= `python -m canctl_core`).
+  Electron 사이드카가 띄우는 기본 경로. `core/canctl_core/__main__.py`.
+- CLI: `canalyst-core cli <명령>` (= `python -m canctl_core.cli`). 실행 중인 데몬에 WS
+  로 프로토콜 명령을 보내고 JSON 을 stdout 으로 출력하는 얇은 클라이언트(AI/스크립트용).
+  서브커맨드는 `VALID_COMMANDS` 전체 + `monitor`/`serve`/`raw`. **원칙: 어떤 명령도 hang
+  되지 않는다**(monitor 유한, 데몬 미기동 즉시 실패, 모든 대기는 응답|error|timeout 으로
+  종료, cp949 안전한 `ensure_ascii` JSON). 종료코드 0/1/3/4. `core/canctl_core/cli.py`.
+- MCP: `canalyst-core mcp` (= `python -m canctl_core.mcp_server`). 로컬 MCP(stdio) 서버.
+  **라이브 전용 어댑터** — 경계: *"세션이 살아있어야 하면 MCP, 끝난 산출물(캡처 파일)이면
+  CLI."* 라이브 11툴(connect/disconnect/set_filter/send(+dry_run)/send_periodic/
+  stop_periodic/start_capture/stop_capture/stream/wait_for/status)만 노출하고 **디코드·
+  변환·통계·export 는 안 한다**(캡처 파일을 CLI 가 분석). `can_stop_capture` 는 저장 파일의
+  **절대경로**를 반환(분석 핸드오프). 데몬에 붙는 얇은 WS 클라(자체 도메인 상태 없음 —
+  세션 상태는 데몬에 산다). 단일 reader 멀티플렉스 + cmd_lock(상관관계 ID 없음 → 단일
+  클라이언트 가정). **데몬이 없으면 `canalyst-core` 서버를 자식으로 autospawn**(있으면 붙어
+  GUI 와 공존; `--mock`/`--no-autospawn` 옵션). `core/canctl_core/mcp_server.py`.
+  **mcp SDK 는 옵션 의존성**(`[mcp]` extra) — 동결 바이너리에 넣으려면 빌드 시
+  `pip install -e .[mcp]` + `--collect-all mcp`(mcp/pydantic 번들 finicky, **동결 빌드
+  미검증** — 개발 설치는 검증됨).
+- 분석 로직(통계 등)은 **core 에만** 둔다(어댑터에 중복 금지): `core/canctl_core/aggregator.py`
+  의 `RxAggregator`(프레임 (channel,can_id)별 통계)는 이후 CLI 의 캡처 파일 분석용 core
+  유틸이다(MCP 는 사용하지 않음).
+- 코어 바이너리는 `--collect-submodules canctl_core` 로 cli/mcp 모듈까지 번들 → 설치본
+  `<resources>/core/canalyst-core(.exe) cli|mcp ...` 로 동일 사용. 서버 파서는
+  positional 이 없어 `cli`/`mcp` 는 충돌 없는 분기 토큰.
+- UI: `ui/src/main/index.js`(Electron main) → 앱 시작 시 코어를 사이드카로 spawn
+  (`resources/core/canalyst-core`).
 
 ## WebSocket 프로토콜 (JSON, 한 줄=한 메시지)
 
