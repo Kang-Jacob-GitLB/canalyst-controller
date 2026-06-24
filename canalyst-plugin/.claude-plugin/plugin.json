@@ -1,10 +1,22 @@
 {
   "name": "canalyst",
-  "description": "CANalyst-II CAN 버스 라이브 제어 — connect/send/capture/stream/wait_for 를 MCP 도구로 노출한다. 라이브 동작 전용(캡처 파일 디코드·통계·변환은 별도 CLI). 코어(canalyst-core)가 설치돼 있어야 한다.",
+  "description": "CANalyst-II CAN 버스 라이브 제어 — connect/send/capture/stream/wait_for 를 MCP 도구로 노출한다. 라이브 동작 전용(캡처 파일 디코드·통계·변환은 별도 CLI). 설치 시 코어(canalyst-core)를 자동 부트스트랩한다(Python 3.10+·git 필요).",
   "author": {
     "name": "Litbig"
   },
   "homepage": "https://github.com/Kang-Jacob-GitLB/canalyst-controller",
   "repository": "https://github.com/Kang-Jacob-GitLB/canalyst-controller",
-  "keywords": ["can", "canalyst", "canalyst-ii", "automotive", "vehicle", "obd", "usb-can"]
+  "keywords": ["can", "canalyst", "canalyst-ii", "automotive", "vehicle", "obd", "usb-can"],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/bin/canalyst_bootstrap.py\""
+          }
+        ]
+      }
+    ]
+  }
 }

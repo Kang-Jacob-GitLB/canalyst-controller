@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "canalyst": {
-      "command": "canalyst-core",
-      "args": ["mcp"]
+      "command": "python",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/canalyst_mcp.py"]
     }
   }
 }

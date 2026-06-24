@@ -4,26 +4,37 @@ CANalyst-II CAN 버스를 Claude가 **라이브 제어**할 수 있게 해주는
 connect/send/capture/stream/wait_for 등 라이브 동작을 도구로 노출합니다(캡처 파일의
 디코드·통계·변환 같은 사후 분석은 이 플러그인이 아니라 별도 CLI 가 담당).
 
-## 전제: 코어(`canalyst-core`) 설치
+## 코어 자동 설치 (기본)
 
-플러그인은 `canalyst-core mcp` 명령에 위임합니다. 따라서 그 명령이 **PATH 에 있어야**
-합니다. 코어를 설치하면 `canalyst-core` 콘솔 스크립트가 등록됩니다:
+플러그인을 설치하면 **코어(`canalyst-core`)가 자동으로 부트스트랩**됩니다 — 별도 pip 설치가
+필요 없습니다(`bin/canalyst_bootstrap.py`, `bin/canalyst_mcp.py`):
+
+- 세션 시작(SessionStart 훅) + MCP 첫 기동 시, 코어가 없으면 `${CLAUDE_PLUGIN_DATA}` 의
+  **격리 venv 에 GitHub 에서 자동 설치**합니다(멱등 — 이미 있으면 건너뜀).
+- PATH 에 `canalyst-core` 가 이미 있으면(직접 설치했거나 전역 설치) 그걸 그대로 씁니다.
+
+**자동 설치가 충족해야 하는 전제**(이것까지 깔아주진 못함):
+
+- **Python 3.10+** 와 **git** 이 PATH 에 있어야 한다. `python` 명령이 3.10+ 로 해석돼야
+  한다(POSIX 에서 `python3` 만 있으면 `python` 별칭 필요).
+- 저장소가 **private 이면** GitHub 인증(SSH 키/토큰)이 필요하다(pip 가 git 으로 받음).
+- **첫 실행은 수십 초~수 분** 걸릴 수 있다(pip 가 GitHub 에서 받고 빌드). 첫 세션에서 MCP 가
+  "초기화 중/실패"로 보이면 잠시 후·다음 세션에 정상화된다(훅이 미리 받아 둠).
+
+## 코어 수동 설치 (선택)
+
+자동 부트스트랩 대신 직접 설치해도 된다(셸에서 `canalyst-core cli` 를 직접 쓰려면 권장):
 
 ```bash
-# (A) 외부 사용자 — 클론 없이 GitHub 에서 직접 설치
+# (A) 외부 사용자 — 클론 없이 GitHub 에서
 pip install "canalyst-core[mcp] @ git+https://github.com/Kang-Jacob-GitLB/canalyst-controller.git#subdirectory=core"
-
 # (B) 개발 — 클론 후 편집 가능 설치
 git clone https://github.com/Kang-Jacob-GitLB/canalyst-controller.git
 cd canalyst-controller/core && pip install -e ".[mcp]"
-
-# 확인 (둘 다 canalyst-core 콘솔 스크립트를 PATH 에 등록 + MCP 의존성 설치)
-canalyst-core mcp --help
 ```
 
-> 이 패키지는 **PyPI 에 없습니다** — GitHub 에서 받으며, `pyproject.toml` 이 `core/` 하위라
-> **`#subdirectory=core` 가 필수**입니다(빼면 설치 실패). 저장소가 private 이면 pip 와
-> `/plugin marketplace add` 둘 다 GitHub 인증(SSH 키/토큰)이 필요합니다.
+> 패키지는 **PyPI 에 없습니다** — GitHub 에서 받으며 `pyproject.toml` 이 `core/` 하위라
+> **`#subdirectory=core` 가 필수**다(빼면 설치 실패).
 
 > 데스크톱 앱 설치본에 동봉된 바이너리(`<resources>/core/canalyst-core(.exe)`)를 쓰려면
 > 그 경로를 PATH 에 추가하거나, `.mcp.json` 의 `command` 를 절대경로로 바꾸세요.
