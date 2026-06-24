@@ -40,10 +40,20 @@ class MockBackend(CanBackend):
         self._connected = False
         self._channel = 0
         self._sources: list[_PeriodicSource] = []
+        self._device: dict | None = None  # 연결 시 채움(status.device)
 
     @property
     def connected(self) -> bool:
         return self._connected
+
+    @property
+    def device_info(self) -> dict | None:
+        return self._device
+
+    @property
+    def channels(self) -> list[int] | None:
+        # mock 도 실장비처럼 두 채널(0,1)을 모두 여는 것으로 모사.
+        return [0, 1] if self._connected else None
 
     def list_devices(self) -> list[dict]:
         return [{"index": 0, "name": "Mock CANalyst-II", "channels": 2}]
@@ -51,6 +61,8 @@ class MockBackend(CanBackend):
     def connect(self, device_index: int, channel: int, bitrate: int) -> None:
         self._channel = channel
         self._connected = True
+        self._device = {"index": device_index, "name": "Mock CANalyst-II",
+                        "bitrate": bitrate}
         now = time.time()
         # 가상 소스: 카운터(0x100), 사인파(0x200), 하트비트(0x7FF)
         self._sources = [
@@ -65,6 +77,7 @@ class MockBackend(CanBackend):
     def disconnect(self) -> None:
         self._connected = False
         self._sources = []
+        self._device = None
 
     def send(self, channel: int, can_id: int, extended: bool,
              rtr: bool, data: list[int]) -> None:

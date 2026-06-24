@@ -10,13 +10,14 @@ VALID_COMMANDS = {
     "list_devices", "connect", "disconnect", "send",
     "set_filter", "start_log", "stop_log", "replay", "load_dbc",
     "list_dbc_messages", "encode_send", "export_log",
+    "send_periodic", "stop_periodic",
 }
 
 #: 마스크 미지정 시 기본(정확 일치). 32비트 all-ones.
 DEFAULT_MASK = 0xFFFFFFFF
 
 #: export_log 지원 포맷.
-EXPORT_FORMATS = {"asc", "csv"}
+EXPORT_FORMATS = {"asc", "csv", "blf"}
 
 
 class ProtocolError(ValueError):
@@ -129,6 +130,15 @@ def make_dbc_messages(messages: list[dict]) -> str:
     return json.dumps({"type": "dbc_messages", "messages": list(messages)})
 
 
+def make_periodic_status(tasks: list[dict]) -> str:
+    """진행 중인 주기 송신 태스크 목록 통지(send_periodic/stop_periodic 결과).
+
+    각 항목: {id, channel, can_id, extended, rtr, data, period, count, sent}.
+    count 는 무한 반복이면 None. 빈 목록이면 진행 중인 주기 송신이 없다는 뜻.
+    """
+    return json.dumps({"type": "periodic_status", "tasks": list(tasks)})
+
+
 # --- Client→Server 명령 파싱·검증 ---
 
 def parse_command(raw: str) -> dict[str, Any]:
@@ -181,6 +191,21 @@ def parse_command(raw: str) -> dict[str, Any]:
         _require_str(msg, "message")
         _require_int(msg, "channel")
         _require_dict(msg, "signals")
+    elif cmd == "send_periodic":
+        # send 와 동일한 프레임 필드 + period(필수) + count(선택).
+        _require_int(msg, "channel")
+        _require_int(msg, "can_id")
+        _validate_data(msg.get("data", []))
+        msg.setdefault("data", [])
+        msg.setdefault("extended", False)
+        msg.setdefault("rtr", False)
+        _validate_period(msg)
+        if "count" in msg:
+            _validate_count(msg["count"])
+    elif cmd == "stop_periodic":
+        # id 생략 시 전체 중지. 있으면 0 이상의 정수여야 한다.
+        if "id" in msg:
+            _validate_periodic_id(msg["id"])
     # list_dbc_messages 는 추가 인자가 없다(검증 불필요)
     return msg
 
@@ -240,3 +265,24 @@ def _validate_filter_channel(channel: Any) -> None:
         return
     if isinstance(channel, bool) or not isinstance(channel, int) or channel < 0:
         raise ProtocolError("channel 은 0 이상의 정수 또는 null 이어야 합니다")
+
+
+def _validate_period(msg: dict) -> None:
+    # 주기(초). bool 거부, int/float 허용하되 0 보다 커야 한다(0·음수는 무의미).
+    if "period" not in msg:
+        raise ProtocolError("필수 필드 누락: period")
+    period = msg["period"]
+    if isinstance(period, bool) or not isinstance(period, (int, float)) or period <= 0:
+        raise ProtocolError("period 는 0 보다 큰 숫자(초)여야 합니다")
+
+
+def _validate_count(count: Any) -> None:
+    # 송신 횟수. 생략 시 무한 반복. 지정 시 1 이상의 정수.
+    if isinstance(count, bool) or not isinstance(count, int) or count < 1:
+        raise ProtocolError("count 는 1 이상의 정수여야 합니다")
+
+
+def _validate_periodic_id(value: Any) -> None:
+    # stop_periodic 의 대상 태스크 id. 0 이상의 정수.
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ProtocolError("id 는 0 이상의 정수여야 합니다")

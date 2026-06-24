@@ -56,10 +56,20 @@ class CanalystIIBackend(CanBackend):
         # 채널별 (epoch - 장비카운터) 오프셋. 첫 프레임에서 채널마다 한 번 잡는다.
         # 채널이 카운터를 공유하든 독립이든 채널별로 보정하므로 항상 맞는다.
         self._ts_offset: dict[int, float] = {}
+        self._device: dict | None = None  # 연결 시 채움(status.device)
 
     @property
     def connected(self) -> bool:
         return self._bus is not None
+
+    @property
+    def device_info(self) -> dict | None:
+        return self._device
+
+    @property
+    def channels(self) -> list[int] | None:
+        # connect 가 항상 두 채널(0,1)을 연다.
+        return [0, 1] if self._bus is not None else None
 
     def list_devices(self) -> list[dict]:
         # python-can/canalystii 는 USB 장치 열거 API를 노출하지 않는다.
@@ -88,6 +98,8 @@ class CanalystIIBackend(CanBackend):
             device=device_index,
             bitrate=bitrate,
         )
+        self._device = {"index": device_index, "name": "CANalyst-II",
+                        "bitrate": bitrate}
         log.info("연결됨: device=%d channels=(0,1) bitrate=%d",
                  device_index, bitrate)
 
@@ -97,6 +109,7 @@ class CanalystIIBackend(CanBackend):
                 self._bus.shutdown()
             finally:
                 self._bus = None
+                self._device = None
 
     def send(self, channel: int, can_id: int, extended: bool,
              rtr: bool, data: list[int]) -> None:

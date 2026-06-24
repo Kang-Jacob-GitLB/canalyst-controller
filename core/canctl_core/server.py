@@ -19,7 +19,7 @@ from . import protocol
 from .backend import CanBackend
 from .dbc import DbcDecoder, DbcUnavailable
 from .protocol import CanFrame, ProtocolError
-from .recorder import FrameRecorder, export_log, read_frames
+from .recorder import FrameRecorder, export_log, read_frames_any
 
 log = logging.getLogger("canctl_core.server")
 
@@ -44,6 +44,9 @@ class CanServer:
         self._decoder = DbcDecoder()            # DBC 신호 디코딩
         self._replay_task: asyncio.Task | None = None  # 진행 중인 replay
         self._stop: asyncio.Event | None = None  # 종료 트리거(run_forever 안에서 생성)
+        # 주기 송신: id → {"task": asyncio.Task, "meta": dict}. seq 는 id 발급용.
+        self._periodics: dict[int, dict] = {}
+        self._periodic_seq = 0
 
     async def run_forever(self) -> None:
         self._running = True
@@ -65,6 +68,10 @@ class CanServer:
             poll_task.cancel()
             if self._replay_task is not None:
                 self._replay_task.cancel()
+            # 진행 중인 주기 송신 태스크를 모두 취소(종료 중이므로 통지는 생략).
+            for entry in self._periodics.values():
+                entry["task"].cancel()
+            self._periodics.clear()
             self._recorder.stop()  # 열려있던 로그 파일 확실히 닫기
             # 장비 연결을 확실히 해제(USB/버스 핸들 반환). mock·canalystii 공통.
             try:
@@ -159,10 +166,14 @@ class CanServer:
             if cmd == "list_devices":
                 await ws.send(protocol.make_devices(self._backend.list_devices()))
             elif cmd == "connect":
+                # 재연결 시 이전 연결에 묶인 주기 송신을 정리(stale TX 방지).
+                await self._stop_periodics()
                 self._backend.connect(msg["device_index"], msg["channel"], msg["bitrate"])
                 await self._broadcast(self._status_msg())
             elif cmd == "disconnect":
                 self._backend.disconnect()
+                # 진행 중인 주기 송신을 모두 중지(끊긴 장비로 송신하지 않게)
+                await self._stop_periodics()
                 # 진행 중인 로깅·replay 를 정리(끊긴 후 빈 파일이 계속 열려 있지 않게)
                 if self._recorder.logging:
                     path = self._recorder.stop()
@@ -226,10 +237,17 @@ class CanServer:
                     )
                     await self._broadcast(protocol.make_rx([tx], decoder=self._decoder))
             elif cmd == "export_log":
-                # JSONL 로그를 표준 포맷(asc/csv)으로 내보내고 요청자에게만 결과 회신.
+                # JSONL 로그를 표준 포맷(asc/csv/blf)으로 내보내고 요청자에게만 결과 회신.
                 count = export_log(msg["src"], msg["dest"], msg["format"])
                 await ws.send(protocol.make_export_status(
                     ok=True, path=msg["dest"], count=count, format=msg["format"]))
+            elif cmd == "send_periodic":
+                # 주기 송신 태스크를 등록하고 현재 목록을 통지.
+                self._start_periodic(msg)
+                await self._broadcast(self._periodic_status_msg())
+            elif cmd == "stop_periodic":
+                # id 지정 시 그 태스크만, 생략 시 전체 중지.
+                await self._stop_periodics(msg.get("id"))
         except DbcUnavailable as exc:  # cantools 미설치 등은 안내성 error
             await ws.send(protocol.make_error(str(exc)))
         except Exception as exc:  # 백엔드 오류를 클라이언트로 표면화
@@ -240,6 +258,8 @@ class CanServer:
         return protocol.make_status(
             connected=self._backend.connected,
             backend=self._backend.name,
+            device=self._backend.device_info,
+            channels=self._backend.channels,
         )
 
     async def _broadcast_loop(self) -> None:
@@ -293,10 +313,13 @@ class CanServer:
         self._replay_task = asyncio.create_task(self._replay_loop(path))
 
     async def _replay_loop(self, path: str) -> None:
-        """기록 파일을 읽어 ts 델타를 재현하며 rx 스트림으로 흘려보낸다(재기록 안 함)."""
+        """기록 파일을 읽어 ts 델타를 재현하며 rx 스트림으로 흘려보낸다(재기록 안 함).
+
+        우리 JSONL 뿐 아니라 외부 표준 로그(asc/blf/trc/mf4)도 확장자로 인식해 재생한다.
+        """
         try:
             prev_ts: float | None = None
-            for frame in read_frames(path):
+            for frame in read_frames_any(path):
                 if prev_ts is not None:
                     gap = frame.ts - prev_ts
                     if gap > 0:
@@ -310,6 +333,92 @@ class CanServer:
         except Exception as exc:
             log.exception("replay 오류: %s", path)
             await self._broadcast(protocol.make_error(f"replay 실패: {exc}"))
+
+    # --- 주기 송신(send_periodic / stop_periodic) ---
+
+    def _start_periodic(self, msg: dict) -> int:
+        """주기 송신 메타를 등록하고 백그라운드 태스크를 시작. 발급한 id 반환."""
+        self._periodic_seq += 1
+        pid = self._periodic_seq
+        meta = {
+            "channel": msg["channel"], "can_id": msg["can_id"],
+            "extended": msg["extended"], "rtr": msg["rtr"],
+            "data": list(msg["data"]), "period": msg["period"],
+            "count": msg.get("count"),  # None=무한
+            "sent": 0,
+        }
+        task = asyncio.create_task(self._periodic_loop(pid))
+        self._periodics[pid] = {"task": task, "meta": meta}
+        return pid
+
+    async def _periodic_loop(self, pid: int) -> None:
+        """등록된 주기 송신을 period 간격으로 보낸다. count 도달/취소/에러 시 종료.
+
+        - 즉시 1회 송신 후 period 간격(드리프트 보정: 송신 지연을 다음 주기에서 흡수).
+        - 각 송신은 tx 프레임으로 모니터에 echo(일반 send 와 동일).
+        - 취소(stop_periodic/disconnect)는 취소자가 dict 정리·통지를 담당하므로 즉시 반환.
+        - 자연 종료(count 완료/에러)는 스스로 dict 에서 빠지고 periodic_status 를 통지.
+        """
+        entry = self._periodics.get(pid)
+        if entry is None:
+            return
+        meta = entry["meta"]
+        loop = asyncio.get_running_loop()
+        next_at = loop.time()
+        try:
+            while meta["count"] is None or meta["sent"] < meta["count"]:
+                try:
+                    self._backend.send(meta["channel"], meta["can_id"],
+                                       meta["extended"], meta["rtr"], meta["data"])
+                except Exception as exc:
+                    await self._broadcast(protocol.make_error(
+                        f"send_periodic 실패: {exc}"))
+                    break
+                tx = CanFrame(
+                    ts=time.time(), channel=meta["channel"], can_id=meta["can_id"],
+                    extended=meta["extended"], rtr=meta["rtr"],
+                    dlc=len(meta["data"]), data=list(meta["data"]), dir="tx",
+                )
+                await self._broadcast(protocol.make_rx([tx], decoder=self._decoder))
+                meta["sent"] += 1
+                if meta["count"] is not None and meta["sent"] >= meta["count"]:
+                    break
+                # 다음 발사 시각까지 대기(송신·echo 에 든 시간을 흡수해 드리프트 방지).
+                next_at += meta["period"]
+                delay = next_at - loop.time()
+                await asyncio.sleep(delay if delay > 0 else 0)
+        except asyncio.CancelledError:
+            return  # 취소자가 정리·통지 담당
+        # 자연 종료: 스스로 정리하고 현재 목록을 통지.
+        self._periodics.pop(pid, None)
+        await self._broadcast(self._periodic_status_msg())
+
+    async def _stop_periodics(self, pid: int | None = None) -> None:
+        """주기 송신 중지. pid 지정 시 해당 태스크만, 생략 시 전체. 목록을 통지.
+
+        대상이 없거나 dict 가 비어도 안전하게 동작한다(idempotent).
+        """
+        if pid is not None:
+            targets = [pid]
+        else:
+            targets = list(self._periodics.keys())
+        for t in targets:
+            entry = self._periodics.pop(t, None)
+            if entry is not None:
+                entry["task"].cancel()
+        await self._broadcast(self._periodic_status_msg())
+
+    def _periodic_status_msg(self) -> str:
+        """진행 중인 주기 송신 목록을 periodic_status 메시지로 직렬화."""
+        tasks = []
+        for pid, entry in sorted(self._periodics.items()):
+            m = entry["meta"]
+            tasks.append({
+                "id": pid, "channel": m["channel"], "can_id": m["can_id"],
+                "extended": m["extended"], "rtr": m["rtr"], "data": list(m["data"]),
+                "period": m["period"], "count": m["count"], "sent": m["sent"],
+            })
+        return protocol.make_periodic_status(tasks)
 
     async def _broadcast(self, msg: str) -> None:
         if not self._clients:

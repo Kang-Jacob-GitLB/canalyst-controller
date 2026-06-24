@@ -50,6 +50,21 @@ def test_make_export_status():
     assert msg["format"] == "asc"
 
 
+def test_make_periodic_status():
+    tasks = [{"id": 1, "channel": 0, "can_id": 0x100, "extended": False,
+              "rtr": False, "data": [1, 2], "period": 0.5, "count": None, "sent": 3}]
+    msg = json.loads(protocol.make_periodic_status(tasks))
+    assert msg["type"] == "periodic_status"
+    assert msg["tasks"][0]["id"] == 1
+    assert msg["tasks"][0]["count"] is None  # 무한 반복
+    assert msg["tasks"][0]["sent"] == 3
+
+
+def test_make_periodic_status_empty():
+    # 빈 목록 = 진행 중인 주기 송신 없음
+    assert json.loads(protocol.make_periodic_status([]))["tasks"] == []
+
+
 def test_make_rx_without_decoder_has_no_decoded():
     frame = CanFrame(1.0, 0, 0x100, False, False, 2, [1, 2])
     msg = json.loads(protocol.make_rx([frame]))
@@ -141,6 +156,42 @@ def test_parse_export_log_asc():
     assert msg["format"] == "asc"
 
 
+def test_parse_export_log_blf():
+    msg = parse_command('{"type":"export_log","src":"a.jsonl","dest":"b.blf","format":"blf"}')
+    assert msg["format"] == "blf"
+
+
+def test_parse_send_periodic_defaults():
+    # period 만 필수. data/extended/rtr 는 send 와 같은 기본값, count 는 미지정(무한).
+    msg = parse_command('{"type":"send_periodic","channel":0,"can_id":256,"period":0.5}')
+    assert msg["period"] == 0.5
+    assert msg["data"] == []
+    assert msg["extended"] is False
+    assert msg["rtr"] is False
+    assert "count" not in msg
+
+
+def test_parse_send_periodic_with_count_and_data():
+    # 정수 period 도 허용, count 와 data 동반.
+    msg = parse_command(
+        '{"type":"send_periodic","channel":1,"can_id":256,"period":1,"count":5,"data":[1,2,3]}')
+    assert msg["period"] == 1
+    assert msg["count"] == 5
+    assert msg["data"] == [1, 2, 3]
+
+
+def test_parse_stop_periodic_without_id():
+    # id 생략 = 전체 중지
+    msg = parse_command('{"type":"stop_periodic"}')
+    assert msg["type"] == "stop_periodic"
+    assert "id" not in msg
+
+
+def test_parse_stop_periodic_with_id():
+    msg = parse_command('{"type":"stop_periodic","id":3}')
+    assert msg["id"] == 3
+
+
 def test_parse_start_log():
     msg = parse_command('{"type":"start_log","path":"log.jsonl"}')
     assert msg["path"] == "log.jsonl"
@@ -180,8 +231,18 @@ def test_parse_load_dbc():
     '{"type":"export_log","src":"a.jsonl","format":"csv"}',    # dest 누락
     '{"type":"export_log","src":"a.jsonl","dest":"b.csv"}',    # format 누락
     '{"type":"export_log","src":"","dest":"b.csv","format":"csv"}',   # 빈 src
-    '{"type":"export_log","src":"a.jsonl","dest":"b.csv","format":"blf"}',  # blf 미지원
+    '{"type":"export_log","src":"a.jsonl","dest":"b.xml","format":"xml"}',  # 미지원 포맷
     '{"type":"export_log","src":"a.jsonl","dest":"b.csv","format":""}',     # 빈 format
+    '{"type":"send_periodic","channel":0,"can_id":1}',                      # period 누락
+    '{"type":"send_periodic","channel":0,"can_id":1,"period":0}',           # period 0
+    '{"type":"send_periodic","channel":0,"can_id":1,"period":-1}',          # period 음수
+    '{"type":"send_periodic","channel":0,"can_id":1,"period":true}',        # period bool
+    '{"type":"send_periodic","channel":0,"can_id":1,"period":0.1,"count":0}',   # count 0
+    '{"type":"send_periodic","channel":0,"can_id":1,"period":0.1,"count":1.5}', # count float
+    '{"type":"send_periodic","can_id":1,"period":0.1}',                     # channel 누락
+    '{"type":"send_periodic","channel":0,"can_id":1,"period":0.1,"data":[256]}',  # 바이트 초과
+    '{"type":"stop_periodic","id":-1}',                                     # id 음수
+    '{"type":"stop_periodic","id":true}',                                   # id bool
 ])
 def test_parse_invalid_ext(raw):
     with pytest.raises(ProtocolError):

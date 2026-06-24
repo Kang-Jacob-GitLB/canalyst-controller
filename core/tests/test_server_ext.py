@@ -374,3 +374,144 @@ def test_handle_send_echoes_tx_frame():
     assert frame["can_id"] == 291
     assert frame["dir"] == "tx"
     assert frame["data"] == [1, 2, 3]
+
+
+# --- status: device/channels 노출 ---
+
+def test_status_device_channels_default_none():
+    # device_info/channels 를 구현하지 않은 백엔드는 status 에 null 로 통지(하위호환)
+    msg = json.loads(CanServer(FakeBackend())._status_msg())
+    assert msg["device"] is None
+    assert msg["channels"] is None
+
+
+def test_status_includes_device_and_channels_when_connected():
+    from canctl_core.mock_backend import MockBackend
+    backend = MockBackend()
+    srv = CanServer(backend)
+    # 미연결 시 None
+    pre = json.loads(srv._status_msg())
+    assert pre["device"] is None and pre["channels"] is None
+    # 연결 후 device({index,name,bitrate})·channels([0,1]) 채워짐
+    backend.connect(0, 1, 500000)
+    post = json.loads(srv._status_msg())
+    assert post["connected"] is True
+    assert post["device"] == {"index": 0, "name": "Mock CANalyst-II", "bitrate": 500000}
+    assert post["channels"] == [0, 1]
+
+
+# --- 주기 송신(send_periodic / stop_periodic) ---
+
+def test_send_periodic_runs_to_count():
+    srv = CanServer(FakeBackend())
+    ws = FakeWs()
+    srv._clients.add(ws)
+    srv._backend.connect(0, 0, 500000)
+
+    async def run():
+        await srv._handle_command(ws, json.dumps({
+            "type": "send_periodic", "channel": 0, "can_id": 0x123,
+            "data": [1, 2], "period": 0.001, "count": 3}))
+        # 자연 종료 시 dict 에서 빠지므로 task 핸들을 먼저 확보한 뒤 await
+        pid = max(srv._periodics)
+        task = srv._periodics[pid]["task"]
+        await task
+    asyncio.run(run())
+
+    # tx echo 가 정확히 count(3)회, 모두 해당 id
+    tx = [fr for m in ws.sent if m["type"] == "rx"
+          for fr in m["frames"] if fr["dir"] == "tx"]
+    assert len(tx) == 3
+    assert all(fr["can_id"] == 0x123 and fr["data"] == [1, 2] for fr in tx)
+    # 자연 종료 후 빈 목록 통지 + dict 비움
+    ps = [m for m in ws.sent if m["type"] == "periodic_status"]
+    assert ps[-1]["tasks"] == []
+    assert srv._periodics == {}
+
+
+def test_send_periodic_status_lists_active_task():
+    srv = CanServer(FakeBackend())
+    ws = FakeWs()
+    srv._clients.add(ws)
+
+    async def run():
+        # 무한 주기 시작 → periodic_status 에 1건 노출
+        await srv._handle_command(ws, json.dumps({
+            "type": "send_periodic", "channel": 1, "can_id": 0x321, "period": 0.001}))
+        pid = max(srv._periodics)
+        # 중지(전체)
+        await srv._handle_command(ws, json.dumps({"type": "stop_periodic"}))
+        assert srv._periodics == {}
+        return pid
+    pid = asyncio.run(run())
+
+    ps = [m for m in ws.sent if m["type"] == "periodic_status"]
+    # 시작 통지: 태스크 1건(무한 → count None)
+    started = ps[0]["tasks"]
+    assert len(started) == 1
+    assert started[0]["id"] == pid
+    assert started[0]["channel"] == 1
+    assert started[0]["can_id"] == 0x321
+    assert started[0]["count"] is None
+    # 마지막 통지: 빈 목록
+    assert ps[-1]["tasks"] == []
+
+
+def test_stop_periodic_by_id():
+    srv = CanServer(FakeBackend())
+    ws = FakeWs()
+    srv._clients.add(ws)
+
+    async def run():
+        await srv._handle_command(ws, json.dumps({
+            "type": "send_periodic", "channel": 0, "can_id": 0x200, "period": 0.001}))
+        pid = max(srv._periodics)
+        await asyncio.sleep(0.005)  # 몇 차례 송신되도록
+        await srv._handle_command(ws, json.dumps({"type": "stop_periodic", "id": pid}))
+        assert pid not in srv._periodics
+    asyncio.run(run())
+
+    # 무한 주기였으니 tx echo 가 최소 1회는 있었어야 한다
+    tx = [fr for m in ws.sent if m["type"] == "rx"
+          for fr in m["frames"] if fr["dir"] == "tx"]
+    assert len(tx) >= 1
+
+
+def test_disconnect_stops_periodics():
+    srv = CanServer(FakeBackend())
+    ws = FakeWs()
+    srv._clients.add(ws)
+
+    async def run():
+        srv._backend.connect(0, 0, 500000)
+        await srv._handle_command(ws, json.dumps({
+            "type": "send_periodic", "channel": 0, "can_id": 0x77, "period": 0.001}))
+        assert len(srv._periodics) == 1
+        await srv._handle_command(ws, json.dumps({"type": "disconnect"}))
+        assert srv._periodics == {}
+    asyncio.run(run())
+    ps = [m for m in ws.sent if m["type"] == "periodic_status"]
+    assert ps[-1]["tasks"] == []
+
+
+# --- replay: 외부 표준 로그(.asc) 재생 ---
+
+def test_replay_external_asc(tmp_path):
+    pytest.importorskip("can")
+    from canctl_core.recorder import FrameRecorder, export_log
+    # jsonl 기록 → asc 로 변환(외부 도구 로그를 모사)
+    jsonl = str(tmp_path / "rec.jsonl")
+    rec = FrameRecorder()
+    rec.start(jsonl)
+    rec.record(_frames())
+    rec.stop()
+    asc = str(tmp_path / "rec.asc")
+    export_log(jsonl, asc, "asc")
+
+    srv = CanServer(FakeBackend())
+    ws = FakeWs()
+    srv._clients.add(ws)
+    asyncio.run(srv._replay_loop(asc))
+
+    rx_ids = [fr["can_id"] for m in ws.sent if m["type"] == "rx" for fr in m["frames"]]
+    assert rx_ids == [0x100, 0x200, 0x7FF]

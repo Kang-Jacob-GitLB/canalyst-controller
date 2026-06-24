@@ -8,8 +8,10 @@ from canctl_core.protocol import CanFrame
 from canctl_core.recorder import (
     FrameRecorder,
     export_log,
+    frame_from_can_message,
     frame_from_dict,
     read_frames,
+    read_frames_any,
 )
 
 
@@ -168,10 +170,10 @@ def test_export_log_asc_roundtrip(tmp_path):
 
 def test_export_log_invalid_format_raises(tmp_path):
     src = _make_jsonl(tmp_path)
-    dest = str(tmp_path / "out.blf")
-    # blf 는 지원하지 않는다(ValueError)
+    dest = str(tmp_path / "out.xml")
+    # 지원하지 않는 포맷은 ValueError (asc/csv/blf 만 지원)
     with pytest.raises(ValueError):
-        export_log(src, dest, "blf")
+        export_log(src, dest, "xml")
 
 
 def test_export_log_empty_source(tmp_path):
@@ -185,3 +187,65 @@ def test_export_log_empty_source(tmp_path):
     with open(dest, encoding="utf-8", newline="") as fp:
         rows = list(csv.reader(fp))
     assert len(rows) == 1  # 헤더만
+
+
+def test_export_log_blf_roundtrip(tmp_path):
+    can = pytest.importorskip("can")  # python-can 의존성
+    src = _make_jsonl(tmp_path)
+    dest = str(tmp_path / "out.blf")
+    count = export_log(src, dest, "blf")
+    assert count == 3
+
+    # can.BLFReader 로 재파싱: id/extended/rtr/dlc/data 보존 검증
+    # (BLF channel 은 1-based 등 내부 표현이 달라 channel 동등성은 검증하지 않는다)
+    msgs = list(can.BLFReader(dest))
+    assert len(msgs) == 3
+    orig = _sample_frames()
+    for msg, frame in zip(msgs, orig):
+        assert msg.arbitration_id == frame.can_id
+        assert bool(msg.is_extended_id) == frame.extended
+        assert bool(msg.is_remote_frame) == frame.rtr
+        assert msg.dlc == frame.dlc
+        if not frame.rtr:
+            assert list(msg.data) == frame.data
+
+
+# --- read_frames_any: 확장자별 디스패치 ---
+
+def test_read_frames_any_reads_jsonl(tmp_path):
+    # .jsonl 은 우리 포맷(read_frames)으로 읽는다
+    src = _make_jsonl(tmp_path)
+    frames = list(read_frames_any(src))
+    assert [f.can_id for f in frames] == [0x100, 0x18FF0001, 0x7FF]
+
+
+def test_read_frames_any_reads_external_asc(tmp_path):
+    # 외부 표준 로그(.asc)도 확장자로 인식해 can.LogReader 로 읽는다(외부 로그 replay 용)
+    pytest.importorskip("can")
+    src = _make_jsonl(tmp_path)
+    asc = str(tmp_path / "log.asc")
+    export_log(src, asc, "asc")
+
+    frames = list(read_frames_any(asc))
+    assert len(frames) == 3
+    orig = _sample_frames()
+    for got, frame in zip(frames, orig):
+        assert got.can_id == frame.can_id
+        assert got.extended == frame.extended
+        assert got.rtr == frame.rtr
+        assert isinstance(got.channel, int)  # channel 은 항상 int 로 강제
+
+
+def test_frame_from_can_message_coerces_channel():
+    can = pytest.importorskip("can")
+    # channel=None → 0
+    msg = can.Message(timestamp=1.0, arbitration_id=0x100, is_extended_id=False,
+                      is_remote_frame=False, dlc=1, data=bytes([1]), channel=None)
+    frame = frame_from_can_message(msg)
+    assert frame.channel == 0 and isinstance(frame.channel, int)
+    assert frame.can_id == 0x100
+    assert frame.data == [1]
+    # 정수화 불가한 문자열 channel → 0
+    msg2 = can.Message(timestamp=1.0, arbitration_id=0x101, is_extended_id=False,
+                       is_remote_frame=False, dlc=0, data=b"", channel="can0")
+    assert frame_from_can_message(msg2).channel == 0
