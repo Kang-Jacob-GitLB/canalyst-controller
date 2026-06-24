@@ -12,22 +12,24 @@ CANalyst-II 제어 데스크톱 앱. Python 코어(CAN + WebSocket) + Electron/R
 ### Client→Server 명령
 - 연결: `list_devices` / `connect{device_index,channel,bitrate}` / `disconnect` — **connect 는 장비의 두 채널(0,1)을 모두 같은 `bitrate` 로 열어** 어느 채널로든 송수신이 가능하다(`channel` 필드는 프로토콜 호환용으로 유지되나 채널 선택에는 쓰이지 않음). 채널별 비트레이트는 미지원.
 - 송신: `send{channel,can_id,extended,rtr,data:[..]}`
+- 주기 송신: `send_periodic{channel,can_id,extended?,rtr?,data?,period,count?}` / `stop_periodic{id?}` — `period`(초, 0 초과)마다 프레임을 반복 송신. `count` 생략 시 무한, 지정 시 그 횟수만큼. `stop_periodic` 의 `id` 생략 시 전체 중지. **코어 asyncio 타이머 기반**(canalystii 가 하드웨어 주기송신을 노출하지 않아 소프트웨어 타이밍 — 고부하 시 약간의 지터). disconnect/재connect 시 자동 정리. 각 송신은 `rx`(dir=tx)로 echo.
 - 수신 필터: `set_filter{ids:[..],mask?,channel?}` — 빈 `ids`=전체 통과. `mask` 생략 시 정확 일치(all-ones), `channel` 생략/null 시 전체 채널. **set_filter는 필터 전체를 교체**(미지정 항목은 기본값으로 리셋).
-- 로깅·재생: `start_log{path}` / `stop_log` / `replay{path}` (기록 포맷은 JSONL, 한 줄=한 프레임)
-- 로그 내보내기: `export_log{src,dest,format:"asc"|"csv"}` — 기록된 JSONL을 표준 포맷(Vector ASC / candump식 CSV)으로 변환. (blf 미지원)
+- 로깅·재생: `start_log{path}` / `stop_log` / `replay{path}` — 기록 포맷은 JSONL(한 줄=한 프레임). `replay` 는 우리 JSONL 외에 **외부 표준 로그(.asc/.blf/.trc/.mf4)도 확장자로 인식**해 재생(python-can `LogReader`).
+- 로그 내보내기: `export_log{src,dest,format:"asc"|"csv"|"blf"}` — 기록된 JSONL을 표준 포맷(Vector ASC / candump식 CSV / Vector BLF)으로 변환.
 - DBC: `load_dbc{path}` / `list_dbc_messages` / `encode_send{message,signals:{신호명:값},channel}` — 신호값을 인코딩해 프레임으로 송신.
 
 ### Server→Client 이벤트
-- `devices{list}` / `status{connected,backend,device,channels}`
+- `devices{list}` / `status{connected,backend,device,channels}` — 연결 시 `device`={index,name,bitrate}, `channels`=[0,1] 채워짐(미연결·미구현 백엔드는 null).
 - `rx{frames:[{ts,channel,can_id,extended,rtr,dlc,data,dir,decoded?}]}`(배칭) — `dir`은 `"rx"`/`"tx"`, DBC 로드 시 각 프레임에 `decoded{message,signals}` 부착.
 - `error{message}`
 - `log_status{logging,path}` / `filter{ids,mask,channel}`(현재 필터 통지)
+- `periodic_status{tasks:[{id,channel,can_id,extended,rtr,data,period,count,sent}]}` — 진행 중인 주기 송신 목록(send_periodic/stop_periodic 결과). 빈 목록=진행 중 없음.
 - `dbc_messages{messages:[{name,frame_id,is_extended,length,signals:[{name,minimum,maximum,unit}]}]}`
 - `export_status{ok,path,count,format}`
 
 ### 참고
 - `bitrate`는 정수(125000/250000/500000/1000000 등 표준값 + 사용자 지정 임의값). UI는 드롭다운/사용자 지정 입력.
-- 한계: canalystii는 송신 ACK/버스에러 보고 불가 → TX는 "큐잉됨" 수준만 반영. CAN FD·다중 장치 자동열거 미지원.
+- 한계: canalystii는 송신 ACK/버스에러 보고 불가 → TX는 "큐잉됨" 수준만 반영. CAN FD·다중 장치 자동열거·채널별 비트레이트 미지원.
 
 ## 코드 컨벤션
 
