@@ -3,15 +3,21 @@ import { join } from 'path'
 import { spawn, execFileSync } from 'child_process'
 import { loadWindowState, saveWindowState, isWithinDisplay } from './windowState'
 import { checkCanalystDriver } from './driverCheck'
+import { probeDaemon } from './coreDaemon'
 
 const CORE_PORT = 8765
 //: 종료 시 코어가 stdin EOF 를 받고 스스로 graceful 종료(장비 해제)할 때까지 기다리는 시간(ms).
 //  이 안에 안 죽으면 프로세스 트리를 강제 종료한다.
 const CORE_SHUTDOWN_TIMEOUT_MS = 2000
+//: attach 모드(외부 데몬 사용)에서 그 데몬 생존을 확인하는 폴링 간격(ms).
+const CORE_MONITOR_INTERVAL_MS = 3000
 let coreProc = null
 let coreExited = false  // 코어가 이미 종료됐는지(중복 kill 방지)
 let quitting = false    // before-quit graceful 시퀀스 재진입 방지
 let mainWindow = null
+//: 우리가 띄운 데몬인가? false 면 외부(플러그인/수동) 데몬에 attach 한 상태 →
+//  종료 시 그 데몬을 죽이지 않고, 사라지면 take-over 로 우리가 띄운다.
+let ownDaemon = false
 
 /**
  * Python 코어를 사이드카로 기동한다.
@@ -19,7 +25,7 @@ let mainWindow = null
  * 패키징 모드: extraResources 로 동봉된 PyInstaller 단일 바이너리(resources/core/) 실행.
  * 기본은 실장비(canalystii). CANCTL_MOCK 환경변수가 설정되면 데모(mock) 모드.
  */
-function startCore() {
+function spawnCore() {
   // 기본은 실장비(canalystii) 모드. 장비 없이 데모를 보려면 CANCTL_MOCK 설정.
   const useMock = !!process.env.CANCTL_MOCK
   const coreArgs = ['--port', String(CORE_PORT)]
@@ -64,6 +70,40 @@ function startCore() {
     coreExited = true
     coreProc = null
   })
+  ownDaemon = true
+}
+
+/**
+ * 데몬을 확보한다 — 이미 8765 에 데몬(플러그인/수동 실행)이 있으면 사이드카를 새로
+ * 띄우지 않고 그 데몬에 attach(같은 장치 공유, 포트 충돌 방지). 없으면 우리가 띄워 소유.
+ * 어느 순서로 켜든(플러그인 먼저든 앱 먼저든) 충돌 없이 단일 데몬을 공유하게 한다.
+ */
+async function ensureCore() {
+  if (coreProc && !coreExited) return  // 우리가 띄운 데몬이 살아있음
+  if (await probeDaemon(CORE_PORT)) {
+    // attach 모드: coreProc 를 절대 설정하지 않는다. 종료 정리(before-quit/forceKillCoreTree)는
+    // coreProc 핸들로만 동작하므로, coreProc=null 이어야 외부(플러그인/수동) 데몬을 죽이지 않는다.
+    // 불변식: coreProc != null  ⟺  우리가 spawn 한 데몬(spawnCore 만 coreProc 를 설정). 깨지 말 것.
+    console.log('[core] 기존 데몬 발견(8765) → 사이드카 미기동, attach')
+    ownDaemon = false
+    return
+  }
+  spawnCore()
+}
+
+/**
+ * attach 모드 한정 take-over 감시: 붙어쓰던 외부 데몬이 사라지면(플러그인/세션 종료 등)
+ * 우리가 넘겨받아 사이드카를 띄운다. 우리가 소유한 데몬은 건드리지 않는다(기존 종료/
+ * 크래시 동작 유지). 렌더러는 자동 재연결하므로 새 데몬에 다시 붙는다.
+ */
+function startDaemonMonitor() {
+  setInterval(async () => {
+    if (quitting || ownDaemon) return
+    if (!(await probeDaemon(CORE_PORT))) {
+      console.log('[core] attach 중이던 데몬이 사라짐 → take-over')
+      await ensureCore()
+    }
+  }, CORE_MONITOR_INTERVAL_MS)
 }
 
 /**
@@ -152,8 +192,9 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(() => {
-  startCore()
+app.whenReady().then(async () => {
+  await ensureCore()       // 기존 데몬 있으면 attach, 없으면 spawn
+  startDaemonMonitor()     // attach 모드면 데몬 소실 시 take-over
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
