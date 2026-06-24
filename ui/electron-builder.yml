@@ -19,8 +19,8 @@ files:
 # from 은 ui/ 기준 상대경로(=canalyst-controller/core/dist), to 는 resources 하위 경로.
 # extraResources 는 항상 asar 바깥(resources/)에 위치하므로 사이드카 spawn 이 가능하다.
 # 주의: core/dist 는 PyInstaller 빌드 후 생성됨(아직 없음 — 설정만).
-#       이 매핑은 PyInstaller --onefile(dist 루트에 canctl-core[.exe] 직접 생성) 가정.
-#       --onedir 모드면 dist/canctl-core/ 트리째 복사되어 경로 규약이 달라진다.
+#       이 매핑은 PyInstaller --onefile(dist 루트에 canalyst-core[.exe] 직접 생성) 가정.
+#       --onedir 모드면 dist/canalyst-core/ 트리째 복사되어 경로 규약이 달라진다.
 extraResources:
   - from: ../core/dist
     to: core
