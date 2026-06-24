@@ -10,12 +10,20 @@ connect/send/capture/stream/wait_for 등 라이브 동작을 도구로 노출합
 합니다. 코어를 설치하면 `canalyst-core` 콘솔 스크립트가 등록됩니다:
 
 ```bash
-# 저장소 클론 후 (core 디렉터리에서)
-pip install -e ".[mcp]"
-#   → canalyst-core 콘솔 스크립트 등록(+ MCP 의존성 mcp SDK)
-# 확인
+# (A) 외부 사용자 — 클론 없이 GitHub 에서 직접 설치
+pip install "canalyst-core[mcp] @ git+https://github.com/Kang-Jacob-GitLB/canalyst-controller.git#subdirectory=core"
+
+# (B) 개발 — 클론 후 편집 가능 설치
+git clone https://github.com/Kang-Jacob-GitLB/canalyst-controller.git
+cd canalyst-controller/core && pip install -e ".[mcp]"
+
+# 확인 (둘 다 canalyst-core 콘솔 스크립트를 PATH 에 등록 + MCP 의존성 설치)
 canalyst-core mcp --help
 ```
+
+> 이 패키지는 **PyPI 에 없습니다** — GitHub 에서 받으며, `pyproject.toml` 이 `core/` 하위라
+> **`#subdirectory=core` 가 필수**입니다(빼면 설치 실패). 저장소가 private 이면 pip 와
+> `/plugin marketplace add` 둘 다 GitHub 인증(SSH 키/토큰)이 필요합니다.
 
 > 데스크톱 앱 설치본에 동봉된 바이너리(`<resources>/core/canalyst-core(.exe)`)를 쓰려면
 > 그 경로를 PATH 에 추가하거나, `.mcp.json` 의 `command` 를 절대경로로 바꾸세요.
