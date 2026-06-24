@@ -912,11 +912,38 @@ button:focus-visible {
   border: 1px solid var(--border);
   padding: 8px 10px;
 }
+/* 드래그 중인 원본 행은 흐리게, 드롭 대상 행은 윗변에 강조선(삽입 위치 암시) */
+.tx-preset.dragging {
+  opacity: 0.45;
+}
+.tx-preset.drag-over {
+  box-shadow: inset 0 2px 0 0 var(--accent);
+}
+.tx-preset-head {
+  /* 드래그 핸들 + 이름을 한 줄에 둔다(이름은 남는 폭을 차지하며 말줄임) */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.tx-preset-drag {
+  cursor: grab;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1;
+  flex: none;
+  user-select: none;
+}
+.tx-preset-drag:active {
+  cursor: grabbing;
+}
 .tx-preset-name {
   /* 프리셋 이름은 사용자 텍스트(한글 포함)이므로 UI 폰트(Pretendard) 사용 — 모노 금지 */
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-near);
+  flex: 1; /* 핸들 옆 남는 폭을 채우며 길면 말줄임 */
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
