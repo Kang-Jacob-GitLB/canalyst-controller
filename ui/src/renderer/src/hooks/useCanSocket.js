@@ -38,16 +38,11 @@ export function useCanSocket(url) {
   const rateBucketsRef = useRef([])
 
   useEffect(() => {
-    const ws = new WebSocket(url)
-    wsRef.current = ws
+    let disposed = false
+    let ws = null
+    let retryTimer = null
 
-    ws.onopen = () => {
-      setConnState('open')
-      ws.send(JSON.stringify({ type: 'list_devices' }))
-    }
-    ws.onclose = () => setConnState('closed')
-    ws.onerror = () => setConnState('error')
-    ws.onmessage = (ev) => {
+    const handleMessage = (ev) => {
       const msg = JSON.parse(ev.data)
       switch (msg.type) {
         case 'status':
@@ -110,7 +105,32 @@ export function useCanSocket(url) {
       }
     }
 
-    return () => ws.close()
+    // 데몬에 연결하고, 닫히면(데몬 재기동·take-over·일시 끊김) 자동 재연결한다.
+    const open = () => {
+      if (disposed) return
+      setConnState('connecting')
+      ws = new WebSocket(url)
+      wsRef.current = ws
+      ws.onopen = () => {
+        setConnState('open')
+        ws.send(JSON.stringify({ type: 'list_devices' }))
+      }
+      ws.onclose = () => {
+        if (disposed) return
+        setConnState('closed')
+        retryTimer = setTimeout(open, 1000) // 잠시 뒤 재연결 시도(반복)
+      }
+      ws.onerror = () => setConnState('error') // 곧 onclose 가 따라와 재연결을 스케줄
+      ws.onmessage = handleMessage
+    }
+
+    open()
+
+    return () => {
+      disposed = true
+      if (retryTimer) clearTimeout(retryTimer)
+      if (ws) ws.close()
+    }
   }, [url])
 
   const send = useCallback((obj) => {
