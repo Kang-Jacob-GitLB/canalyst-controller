@@ -115,26 +115,10 @@ jobs:
           pip install -e .
           pip install pyinstaller
 
-      # 코어 __version__ 을 태그 버전(표시용 2026.06.23)으로 주입한다.
-      #   로컬 소스는 0.0.0 placeholder 이고, 태그를 단일 버전 출처로 삼는다.
-      #   sed -i 는 macOS(BSD sed)에서 인자 규약이 달라 깨지므로, 세 OS 모두에
-      #   존재가 보장되는 python(위에서 setup 됨)으로 in-place 치환한다.
-      #   read_text/write_text 에 encoding="utf-8" 을 명시한다 — Windows 의 Python
-      #   기본 인코딩은 cp1252 라, 한글 주석이 든 이 파일을 그냥 읽으면
-      #   UnicodeDecodeError(byte 0x81)로 죽는다(macOS/Linux 는 기본 UTF-8 라 통과).
-      - name: 코어 버전 주입
-        working-directory: core
-        env:
-          NEW_VERSION: ${{ steps.ver.outputs.version }}
-        run: |
-          python - <<'PY'
-          import os, re, pathlib
-          p = pathlib.Path("canctl_core/__init__.py")
-          ver = os.environ["NEW_VERSION"]
-          text = re.sub(r'^__version__ = .*', f'__version__ = "{ver}"', p.read_text(encoding="utf-8"), flags=re.M)
-          p.write_text(text, encoding="utf-8")
-          print(next(l for l in text.splitlines() if l.startswith("__version__")))
-          PY
+      # 버전 이중화: 코어(canctl_core)는 소스의 semver(__version__·pyproject)를 그대로
+      #   쓴다 — 날짜 태그를 코어에 주입하지 않는다. 그래서 pip·플러그인·동결 바이너리가
+      #   모두 같은 코어 semver 를 보고한다. 날짜(태그) 버전은 아래 UI 패키징에서
+      #   앱(electron-builder)에만 주입한다. → "앱=CalVer(날짜), 코어=semver" 분리.
 
       # core/canalyst-core.spec 은 .gitignore 의 `*.spec` 대상이라 CI 에 없다.
       # 따라서 spec 의 collect_all/collect_submodules 와 동일한 동작을 CLI

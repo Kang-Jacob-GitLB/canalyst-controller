@@ -3,6 +3,5 @@
 CAN 송수신 백엔드(mock / canalystii)와 로컬 WebSocket 서버를 제공한다.
 """
 
-# 0.0.0 = 미릴리즈 dev placeholder. release 워크플로우가 태그(vYYYY.MM.DD)를
-# 빌드 시점에 주입하므로, 직접 버전을 커밋하지 않는다.
-__version__ = "0.0.0"
+# 코어 semver. pyproject.toml 의 version 과 함께 유지한다(앱 날짜 태그와 독립).
+__version__ = "0.1.0"

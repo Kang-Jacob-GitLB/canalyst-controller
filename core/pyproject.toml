@@ -2,9 +2,9 @@
 # 배포 실행파일/명령 이름은 canalyst-core(멀티콜: server|cli|mcp).
 # 파이썬 import 패키지명은 호환을 위해 canctl_core 로 유지한다.
 name = "canalyst-core"
-# 0.0.0 = 미릴리즈 dev placeholder. 실제 버전은 release 워크플로우가
-# 태그(vYYYY.MM.DD)에서 빌드 시점에 주입한다(직접 커밋하지 않음).
-version = "0.0.0"
+# 코어 자체 버전(semver). 앱(데스크탑 설치본)의 날짜 태그(CalVer)와 독립이다 —
+# 코어 동작/인터페이스가 바뀌면 여기와 canctl_core/__init__.py 의 __version__ 를 함께 올린다.
+version = "0.1.0"
 description = "CANalyst-II 제어 코어: CAN 송수신 + 로컬 WebSocket 서버"
 requires-python = ">=3.10"
 dependencies = [
