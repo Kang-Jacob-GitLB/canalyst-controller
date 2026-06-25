@@ -960,12 +960,24 @@ button:focus-visible {
   gap: 6px;
   flex-wrap: wrap;
 }
-/* 액션은 아이콘 버튼으로 폭을 아낀다(텍스트 라벨 제거). 의미·툴팁은 버튼의 aria-label/title 로
-   보강한다. 아이콘이 작아 5개여도 보통 한 줄에 들어가며, 좁으면 flex-wrap 으로 접힌다. */
+/* 액션은 모노톤 라인 아이콘(SVG) 버튼으로 폭을 아낀다(텍스트 라벨 제거). 의미·툴팁은
+   버튼의 aria-label/title 로 보강한다. 아이콘이 작아 5개여도 보통 한 줄에 들어가며,
+   좁으면 flex-wrap 으로 접힌다. 아이콘은 currentColor 라 버튼 텍스트색(흰색계)을 따른다. */
 .tx-preset-actions button {
-  padding: 5px 9px;
-  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
   line-height: 1;
+}
+.tx-preset-actions .tx-icon {
+  display: block;
+}
+/* 삭제는 평상시 다른 아이콘과 같은 흰색으로 통일해 행이 알록달록해지지 않게 하고,
+   호버할 때만 위험색(빨강)으로 의도를 드러낸다. */
+.tx-preset-actions .icon-danger:hover:not(:disabled) {
+  color: var(--negative);
+  border-color: var(--negative);
 }
 
 /* 프리셋 덮어쓰기/전체교체 확인 배너 — 되돌릴 수 없는 작업이라 경고색 강조 */

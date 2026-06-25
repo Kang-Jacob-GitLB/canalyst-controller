@@ -41,6 +41,60 @@ function moveItem(arr, from, to) {
   return next
 }
 
+// 프리셋 행 액션용 라인 아이콘(Feather 계열). 컬러 이모지 대신 모노톤 SVG 를 써서
+// 다크 테마에서 currentColor(=버튼 텍스트색, 흰색계)로 렌더된다 — 배경과 충돌하지 않고
+// baseline 정렬이 안정적이다. 의미는 버튼의 aria-label/title 이 전달하므로 aria-hidden.
+function ActionIcon({ children }) {
+  return (
+    <svg
+      className="tx-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  )
+}
+
+// 각 동작의 아이콘 path 조각. 로드=내려받기(폼으로 가져오기), 이름 변경=연필,
+// 덮어쓰기=디스크 저장, 재전송=종이비행기(보내기), 삭제=휴지통.
+const ICON_LOAD = (
+  <>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </>
+)
+const ICON_RENAME = <path d="M17 3a2.85 2.85 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+const ICON_OVERWRITE = (
+  <>
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+    <polyline points="17 21 17 13 7 13 7 21" />
+    <polyline points="7 3 7 8 15 8" />
+  </>
+)
+const ICON_SEND = (
+  <>
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+  </>
+)
+const ICON_DELETE = (
+  <>
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <line x1="10" y1="11" x2="10" y2="17" />
+    <line x1="14" y1="11" x2="14" y2="17" />
+  </>
+)
+
 export default function TxPanel({ status, onSend, prefill }) {
   const [canId, setCanId] = usePersistentState('canctl.tx.canId', '123')
   const [channel, setChannel] = usePersistentState('canctl.tx.channel', 0)
@@ -567,7 +621,7 @@ export default function TxPanel({ status, onSend, prefill }) {
                   title="폼으로 불러오기"
                   onClick={() => loadPreset(p)}
                 >
-                  📥
+                  <ActionIcon>{ICON_LOAD}</ActionIcon>
                 </button>
                 <button
                   type="button"
@@ -576,7 +630,7 @@ export default function TxPanel({ status, onSend, prefill }) {
                   title="이름 변경"
                   onClick={() => startRename(p)}
                 >
-                  ✏️
+                  <ActionIcon>{ICON_RENAME}</ActionIcon>
                 </button>
                 <button
                   type="button"
@@ -585,7 +639,7 @@ export default function TxPanel({ status, onSend, prefill }) {
                   title="현재 폼 값으로 덮어쓰기"
                   onClick={() => overwritePreset(p.name)}
                 >
-                  💾
+                  <ActionIcon>{ICON_OVERWRITE}</ActionIcon>
                 </button>
                 <button
                   type="button"
@@ -595,16 +649,16 @@ export default function TxPanel({ status, onSend, prefill }) {
                   onClick={() => sendPreset(p)}
                   disabled={!connected}
                 >
-                  📤
+                  <ActionIcon>{ICON_SEND}</ActionIcon>
                 </button>
                 <button
                   type="button"
-                  className="icon-btn btn-danger"
+                  className="icon-btn icon-danger"
                   aria-label="삭제"
                   title="삭제"
                   onClick={() => deletePreset(p.name)}
                 >
-                  🗑️
+                  <ActionIcon>{ICON_DELETE}</ActionIcon>
                 </button>
               </span>
             </li>
