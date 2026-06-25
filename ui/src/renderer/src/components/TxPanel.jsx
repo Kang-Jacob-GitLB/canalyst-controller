@@ -86,6 +86,11 @@ export default function TxPanel({ status, onSend, prefill }) {
   // 프리셋 가져오기 병합 방식. 파괴적 기본값을 피하려 영속하지 않고 세션마다 병합으로 시작한다.
   const [importMode, setImportMode] = useState('merge') // 'merge' | 'replace'
 
+  // 프리셋 이름 인라인 편집 상태. renamingName=편집 중인 프리셋의 현재 이름(없으면 null),
+  // renameValue=input 의 현재 값. 이름은 프리셋의 식별자(key)라 커밋 시 빈값·중복을 막는다.
+  const [renamingName, setRenamingName] = useState(null)
+  const [renameValue, setRenameValue] = useState('')
+
   const connected = !!status?.connected
 
   // 현재 폼으로 프레임을 만들어 송신한다. 검증 실패 시 false 반환(틱은 skip).
@@ -219,6 +224,48 @@ export default function TxPanel({ status, onSend, prefill }) {
     setPresets((prev) => prev.filter((p) => p.name !== name))
     // 덮어쓰기 확인 대기 중인 대상이 삭제되면 확인 단계도 취소한다.
     setPending((cur) => (cur?.kind === 'overwrite' && cur.name === name ? null : cur))
+  }
+
+  // 프리셋 이름 인라인 편집 시작 — 현재 이름을 input 초기값으로 채운다.
+  function startRename(p) {
+    setRenamingName(p.name)
+    setRenameValue(p.name)
+    setErr(null)
+  }
+
+  // 인라인 편집 취소(Esc/blur) — 아무것도 바꾸지 않고 닫는다.
+  function cancelRename() {
+    setRenamingName(null)
+  }
+
+  // 인라인 편집 커밋(Enter). 이름은 프리셋의 식별자라 빈값·중복을 막는다:
+  //  - 빈 이름: 저장 규칙과 동일하게 거부(편집 유지)
+  //  - 변경 없음: 그냥 닫기(no-op)
+  //  - 다른 프리셋과 중복: 거부 — 두 프리셋을 합치지 않는다(사용자가 기대하지 않음)
+  // 성공 시 해당 항목의 name 만 교체하고, pending(덮어쓰기 확인)이 옛 이름을
+  // 가리키면 새 이름으로 따라가게 해 정합을 유지한다.
+  function commitRename() {
+    if (renamingName === null) return
+    const oldName = renamingName
+    const next = renameValue.trim()
+    if (next === '') {
+      setErr('프리셋 이름을 입력하세요')
+      return
+    }
+    if (next === oldName) {
+      setRenamingName(null) // 변경 없음
+      return
+    }
+    if (presets.some((p) => p.name === next)) {
+      setErr(`'${next}' 프리셋이 이미 있습니다`)
+      return
+    }
+    setErr(null)
+    setPresets((prev) => prev.map((p) => (p.name === oldName ? { ...p, name: next } : p)))
+    setPending((cur) =>
+      cur?.kind === 'overwrite' && cur.name === oldName ? { ...cur, name: next } : cur
+    )
+    setRenamingName(null)
   }
 
   // 프리셋 행 드래그 재정렬(네이티브 HTML5 DnD). 핸들(⠿)에서 드래그를 시작하고
@@ -488,27 +535,76 @@ export default function TxPanel({ status, onSend, prefill }) {
                 >
                   ⠿
                 </span>
-                <span className="tx-preset-name" title={`ID ${p.canId} ${p.dataStr}`}>
-                  {p.name}
-                </span>
+                {renamingName === p.name ? (
+                  <input
+                    className="tx-preset-rename"
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        commitRename()
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault()
+                        cancelRename()
+                      }
+                    }}
+                    onBlur={cancelRename}
+                    aria-label={`${p.name} 이름 변경`}
+                    autoFocus
+                  />
+                ) : (
+                  <span className="tx-preset-name" title={`ID ${p.canId} ${p.dataStr}`}>
+                    {p.name}
+                  </span>
+                )}
               </div>
               <span className="tx-preset-actions">
-                <button type="button" onClick={() => loadPreset(p)}>
-                  로드
-                </button>
-                <button type="button" onClick={() => overwritePreset(p.name)}>
-                  덮어쓰기
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="로드"
+                  title="폼으로 불러오기"
+                  onClick={() => loadPreset(p)}
+                >
+                  📥
                 </button>
                 <button
                   type="button"
-                  className="btn-primary"
+                  className="icon-btn"
+                  aria-label="이름 변경"
+                  title="이름 변경"
+                  onClick={() => startRename(p)}
+                >
+                  ✏️
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="덮어쓰기"
+                  title="현재 폼 값으로 덮어쓰기"
+                  onClick={() => overwritePreset(p.name)}
+                >
+                  💾
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn btn-primary"
+                  aria-label="재전송"
+                  title="이 프리셋 재전송"
                   onClick={() => sendPreset(p)}
                   disabled={!connected}
                 >
-                  재전송
+                  📤
                 </button>
-                <button type="button" className="btn-danger" onClick={() => deletePreset(p.name)}>
-                  삭제
+                <button
+                  type="button"
+                  className="icon-btn btn-danger"
+                  aria-label="삭제"
+                  title="삭제"
+                  onClick={() => deletePreset(p.name)}
+                >
+                  🗑️
                 </button>
               </span>
             </li>

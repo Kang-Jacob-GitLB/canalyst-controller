@@ -127,7 +127,7 @@ describe('TxPanel', () => {
       expect(idInput).toHaveValue('000')
 
       // 프리셋 로드 → 7DF 가 복원됨
-      await user.click(screen.getByText('로드'))
+      await user.click(screen.getByRole('button', { name: '로드' }))
       expect(idInput).toHaveValue('7DF')
     })
 
@@ -139,7 +139,7 @@ describe('TxPanel', () => {
       await user.click(screen.getByText('프리셋 저장'))
       expect(screen.getByText('삭제대상')).toBeInTheDocument()
 
-      await user.click(screen.getByText('삭제'))
+      await user.click(screen.getByRole('button', { name: '삭제' }))
       expect(screen.queryByText('삭제대상')).not.toBeInTheDocument()
     })
 
@@ -159,7 +159,7 @@ describe('TxPanel', () => {
       await user.clear(idInput)
       await user.type(idInput, '000')
 
-      await user.click(screen.getByText('재전송'))
+      await user.click(screen.getByRole('button', { name: '재전송' }))
       expect(onSend).toHaveBeenCalledWith(
         expect.objectContaining({ can_id: 0x7df })
       )

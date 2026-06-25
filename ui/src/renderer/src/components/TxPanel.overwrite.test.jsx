@@ -94,7 +94,7 @@ describe('프리셋별 덮어쓰기 버튼(현재 폼 값으로 갱신)', () => 
     // 폼을 999 로 바꾸고 A 행의 "덮어쓰기" → 확인
     await setId(user, '999')
     const rowA = screen.getByText('A').closest('li')
-    await user.click(within(rowA).getByText('덮어쓰기'))
+    await user.click(within(rowA).getByRole('button', { name: '덮어쓰기' }))
     await user.click(within(screen.getByRole('alertdialog')).getByText('확인'))
 
     // A 는 999 로 갱신, B 는 그대로, 순서는 여전히 A→B
@@ -111,7 +111,7 @@ describe('프리셋별 덮어쓰기 버튼(현재 폼 값으로 갱신)', () => 
     await saveNew(user, 'A', '111')
 
     await setId(user, '999')
-    await user.click(within(screen.getByText('A').closest('li')).getByText('덮어쓰기'))
+    await user.click(within(screen.getByText('A').closest('li')).getByRole('button', { name: '덮어쓰기' }))
     await user.click(within(screen.getByRole('alertdialog')).getByText('취소'))
 
     expect(screen.getByText('A').getAttribute('title')).toContain('111') // 원래 값 유지

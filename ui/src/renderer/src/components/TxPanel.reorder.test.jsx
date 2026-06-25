@@ -79,7 +79,7 @@ describe('프리셋은 채널 비종속(현재 송신 채널 사용)', () => {
     // 현재 송신 채널을 1로 변경
     await user.selectOptions(channelSelect(), '1')
 
-    await user.click(screen.getByText('재전송'))
+    await user.click(screen.getByRole('button', { name: '재전송' }))
     expect(onSend).toHaveBeenCalledWith(
       expect.objectContaining({ can_id: 0x7df, channel: 1 })
     )
@@ -91,7 +91,7 @@ describe('프리셋은 채널 비종속(현재 송신 채널 사용)', () => {
 
     await saveNew(user, 'P', '7DF')
     await user.selectOptions(channelSelect(), '1')
-    await user.click(screen.getByText('로드'))
+    await user.click(screen.getByRole('button', { name: '로드' }))
 
     expect(channelSelect()).toHaveValue('1')
   })

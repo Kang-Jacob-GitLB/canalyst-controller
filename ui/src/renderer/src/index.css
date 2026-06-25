@@ -948,14 +948,24 @@ button:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 프리셋 이름 인라인 편집 input — 이름 표시 자리(핸들 옆 남는 폭)를 그대로 차지한다. */
+.tx-preset-rename {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
 .tx-preset-actions {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
 }
+/* 액션은 아이콘 버튼으로 폭을 아낀다(텍스트 라벨 제거). 의미·툴팁은 버튼의 aria-label/title 로
+   보강한다. 아이콘이 작아 5개여도 보통 한 줄에 들어가며, 좁으면 flex-wrap 으로 접힌다. */
 .tx-preset-actions button {
-  padding: 5px 11px;
-  font-size: 0.74rem;
+  padding: 5px 9px;
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
 /* 프리셋 덮어쓰기/전체교체 확인 배너 — 되돌릴 수 없는 작업이라 경고색 강조 */
