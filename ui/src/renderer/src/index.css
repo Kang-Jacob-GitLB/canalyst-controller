@@ -937,12 +937,29 @@ button:focus-visible {
 .tx-preset-drag:active {
   cursor: grabbing;
 }
+/* 이름 + 서브 텍스트(ID/데이터)를 세로로 쌓는 묶음 — 핸들 옆 남는 폭을 차지한다. */
+.tx-preset-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
 .tx-preset-name {
   /* 프리셋 이름은 사용자 텍스트(한글 포함)이므로 UI 폰트(Pretendard) 사용 — 모노 금지 */
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-near);
-  flex: 1; /* 핸들 옆 남는 폭을 채우며 길면 말줄임 */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 이름 아래 한 줄 요약: CAN ID·확장/RTR·데이터. hex 값이라 모노폰트로, 약하게(muted) 표시. */
+.tx-preset-detail {
+  font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

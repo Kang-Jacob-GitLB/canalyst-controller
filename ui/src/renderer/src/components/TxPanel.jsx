@@ -95,6 +95,15 @@ const ICON_DELETE = (
   </>
 )
 
+// 프리셋 이름 아래 서브 텍스트로 보여줄 한 줄 요약: CAN ID · (확장) · (RTR|데이터).
+// hex 값이라 모노폰트로 표시한다(CSS). RTR 은 데이터가 없으므로 'RTR' 로 표기한다.
+function presetDetail(p) {
+  const parts = [`ID ${p.canId}`]
+  if (p.extended) parts.push('EXT')
+  parts.push(p.rtr ? 'RTR' : p.dataStr.trim() || '데이터 없음')
+  return parts.join(' · ')
+}
+
 export default function TxPanel({ status, onSend, prefill }) {
   const [canId, setCanId] = usePersistentState('canctl.tx.canId', '123')
   const [channel, setChannel] = usePersistentState('canctl.tx.channel', 0)
@@ -608,8 +617,11 @@ export default function TxPanel({ status, onSend, prefill }) {
                     autoFocus
                   />
                 ) : (
-                  <span className="tx-preset-name" title={`ID ${p.canId} ${p.dataStr}`}>
-                    {p.name}
+                  <span className="tx-preset-meta">
+                    <span className="tx-preset-name" title={`ID ${p.canId} ${p.dataStr}`}>
+                      {p.name}
+                    </span>
+                    <span className="tx-preset-detail">{presetDetail(p)}</span>
                   </span>
                 )}
               </div>

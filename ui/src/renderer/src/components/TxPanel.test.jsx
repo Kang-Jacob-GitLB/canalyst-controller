@@ -173,5 +173,23 @@ describe('TxPanel', () => {
       // 라벨("프리셋 이름")과 겹치지 않도록 오류 문구만 정확히 매칭
       expect(screen.getByText('프리셋 이름을 입력하세요')).toBeInTheDocument()
     })
+
+    it('프리셋 행에 이름 아래 ID·데이터 서브텍스트를 표시한다', async () => {
+      const user = userEvent.setup()
+      render(<TxPanel status={{ connected: true }} onSend={() => {}} />)
+
+      const idInput = screen.getByLabelText('ID(hex)')
+      await user.clear(idInput)
+      await user.type(idInput, '7DF')
+      const dataInput = screen.getByPlaceholderText('11 22 33')
+      await user.clear(dataInput)
+      await user.type(dataInput, 'AA BB')
+      await user.type(screen.getByPlaceholderText('엔진 RPM 요청'), '진단요청')
+      await user.click(screen.getByText('프리셋 저장'))
+
+      // 이름과 별개로 ID·데이터가 한 줄 요약(서브텍스트)으로 노출된다
+      const detail = screen.getByText(/ID 7DF/)
+      expect(detail).toHaveTextContent('AA BB')
+    })
   })
 })
