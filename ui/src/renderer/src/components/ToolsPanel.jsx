@@ -250,7 +250,7 @@ export default function ToolsPanel({
         </button>
       </div>
 
-      {/* 로그 내보내기(기록된 JSONL → 표준 포맷 ASC/CSV) */}
+      {/* 로그 내보내기(기록된 JSONL → 표준 포맷 ASC/CSV/BLF) */}
       <div className="tools-row">
         <label className="grow">
           내보낼 로그(JSONL)
@@ -285,6 +285,7 @@ export default function ToolsPanel({
           <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value)}>
             <option value="asc">ASC</option>
             <option value="csv">CSV</option>
+            <option value="blf">BLF</option>
           </select>
         </label>
         <button

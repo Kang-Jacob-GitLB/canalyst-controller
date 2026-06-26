@@ -146,6 +146,17 @@ describe('ToolsPanel', () => {
     expect(onExportLog).toHaveBeenCalledWith('C:\\in.jsonl', 'C:\\out.csv', 'csv')
   })
 
+  it('포맷 BLF 를 선택해 내보내면 onExportLog 를 blf 로 호출한다', async () => {
+    const onExportLog = vi.fn()
+    render(<ToolsPanel {...baseProps} onExportLog={onExportLog} />)
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText('내보낼 로그(JSONL)'), 'C:\\in.jsonl')
+    await user.type(screen.getByLabelText('저장 경로'), 'C:\\out.blf')
+    await user.selectOptions(screen.getAllByRole('combobox')[1], 'blf')
+    await user.click(screen.getByText('내보내기'))
+    expect(onExportLog).toHaveBeenCalledWith('C:\\in.jsonl', 'C:\\out.blf', 'blf')
+  })
+
   it('exportStatus 성공 시 개수와 경로를 표시한다', () => {
     render(
       <ToolsPanel
