@@ -689,6 +689,26 @@ button:focus-visible {
   padding: var(--sp-4);
   min-height: 0;
   box-shadow: var(--shadow-card);
+  position: relative; /* '맨 아래로' 플로팅 버튼(.rx-scroll-bottom)의 위치 기준 */
+}
+/* 위로 스크롤해 하단에서 벗어났을 때만 나타나는 '맨 아래로' 버튼 — 스크롤 영역 우하단에 뜬다. */
+.rx-scroll-bottom {
+  position: absolute;
+  right: var(--sp-4);
+  bottom: var(--sp-4);
+  z-index: 2;
+  padding: 7px 12px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+}
+.rx-scroll-bottom:hover {
+  background: var(--accent-bright);
 }
 .rx-table-wrap {
   overflow-y: auto;

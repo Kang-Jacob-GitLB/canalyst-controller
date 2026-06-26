@@ -69,8 +69,9 @@ export function downloadCsv(csv, filename = 'can-frames.csv') {
   URL.revokeObjectURL(url)
 }
 
-// 다운로드 파일명에 쓸 타임스탬프 문자열(can-frames-YYYYMMDD-HHMMSS.csv)
-export function csvFilename(date = new Date()) {
+// 'prefix-YYYYMMDD-HHMMSS.ext' 형식의 타임스탬프 파일명을 만든다.
+// 모니터 CSV 즉석 내보내기·로그 파일·로그 내보내기가 공유한다(이름-날짜-시간 규칙 통일).
+export function makeTimestampedName(prefix, ext, date = new Date()) {
   const pad = (n) => String(n).padStart(2, '0')
   const y = date.getFullYear()
   const mo = pad(date.getMonth() + 1)
@@ -78,5 +79,10 @@ export function csvFilename(date = new Date()) {
   const h = pad(date.getHours())
   const mi = pad(date.getMinutes())
   const s = pad(date.getSeconds())
-  return `can-frames-${y}${mo}${d}-${h}${mi}${s}.csv`
+  return `${prefix}-${y}${mo}${d}-${h}${mi}${s}.${ext}`
+}
+
+// 모니터 CSV 즉석 내보내기 파일명(can-frames-YYYYMMDD-HHMMSS.csv). 기존 호출 보존.
+export function csvFilename(date = new Date()) {
+  return makeTimestampedName('can-frames', 'csv', date)
 }
