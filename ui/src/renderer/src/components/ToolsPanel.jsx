@@ -257,7 +257,7 @@ export default function ToolsPanel({
       <div className="tools-row">
         <label className="grow">
           재생 파일 경로(기록된 로그)
-          <input
+          <PathInput
             value={replayPath}
             onChange={(e) => setReplayPath(e.target.value)}
             placeholder="C:\\logs\\can.jsonl"
