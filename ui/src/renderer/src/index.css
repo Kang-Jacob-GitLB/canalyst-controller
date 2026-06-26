@@ -937,26 +937,61 @@ button:focus-visible {
 .tx-preset-drag:active {
   cursor: grabbing;
 }
+/* 이름 + 서브 텍스트(ID/데이터)를 세로로 쌓는 묶음 — 핸들 옆 남는 폭을 차지한다. */
+.tx-preset-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
 .tx-preset-name {
   /* 프리셋 이름은 사용자 텍스트(한글 포함)이므로 UI 폰트(Pretendard) 사용 — 모노 금지 */
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-near);
-  flex: 1; /* 핸들 옆 남는 폭을 채우며 길면 말줄임 */
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* 이름 아래 한 줄 요약: CAN ID·확장/RTR·데이터. hex 값이라 모노폰트로, 약하게(muted) 표시. */
+.tx-preset-detail {
+  font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 프리셋 이름 인라인 편집 input — 이름 표시 자리(핸들 옆 남는 폭)를 그대로 차지한다. */
+.tx-preset-rename {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 .tx-preset-actions {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
 }
+/* 액션은 모노톤 라인 아이콘(SVG) 버튼으로 폭을 아낀다(텍스트 라벨 제거). 의미·툴팁은
+   버튼의 aria-label/title 로 보강한다. 아이콘이 작아 5개여도 보통 한 줄에 들어가며,
+   좁으면 flex-wrap 으로 접힌다. 아이콘은 currentColor 라 버튼 텍스트색(흰색계)을 따른다. */
 .tx-preset-actions button {
-  padding: 5px 11px;
-  font-size: 0.74rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  line-height: 1;
 }
+.tx-preset-actions .tx-icon {
+  display: block;
+}
+/* 삭제만 위험색(btn-danger): 평상시 투명 배경·붉은 아이콘/테두리, 호버 시 채움.
+   나머지 아이콘은 흰색계라, 삭제의 빨강이 파괴적 동작임을 한눈에 구분시킨다. */
 
 /* 프리셋 덮어쓰기/전체교체 확인 배너 — 되돌릴 수 없는 작업이라 경고색 강조 */
 .tx-confirm {

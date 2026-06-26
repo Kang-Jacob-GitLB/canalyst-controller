@@ -41,6 +41,69 @@ function moveItem(arr, from, to) {
   return next
 }
 
+// 프리셋 행 액션용 라인 아이콘(Feather 계열). 컬러 이모지 대신 모노톤 SVG 를 써서
+// 다크 테마에서 currentColor(=버튼 텍스트색, 흰색계)로 렌더된다 — 배경과 충돌하지 않고
+// baseline 정렬이 안정적이다. 의미는 버튼의 aria-label/title 이 전달하므로 aria-hidden.
+function ActionIcon({ children }) {
+  return (
+    <svg
+      className="tx-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  )
+}
+
+// 각 동작의 아이콘 path 조각. 로드=내려받기(폼으로 가져오기), 이름 변경=연필,
+// 덮어쓰기=디스크 저장, 재전송=종이비행기(보내기), 삭제=휴지통.
+const ICON_LOAD = (
+  <>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </>
+)
+const ICON_RENAME = <path d="M17 3a2.85 2.85 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+const ICON_OVERWRITE = (
+  <>
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+    <polyline points="17 21 17 13 7 13 7 21" />
+    <polyline points="7 3 7 8 15 8" />
+  </>
+)
+const ICON_SEND = (
+  <>
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+  </>
+)
+const ICON_DELETE = (
+  <>
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <line x1="10" y1="11" x2="10" y2="17" />
+    <line x1="14" y1="11" x2="14" y2="17" />
+  </>
+)
+
+// 프리셋 이름 아래 서브 텍스트로 보여줄 한 줄 요약: CAN ID · (확장) · (RTR|데이터).
+// hex 값이라 모노폰트로 표시한다(CSS). RTR 은 데이터가 없으므로 'RTR' 로 표기한다.
+function presetDetail(p) {
+  const parts = [`ID ${p.canId}`]
+  if (p.extended) parts.push('EXT')
+  parts.push(p.rtr ? 'RTR' : p.dataStr.trim() || '데이터 없음')
+  return parts.join(' · ')
+}
+
 export default function TxPanel({ status, onSend, prefill }) {
   const [canId, setCanId] = usePersistentState('canctl.tx.canId', '123')
   const [channel, setChannel] = usePersistentState('canctl.tx.channel', 0)
@@ -85,6 +148,11 @@ export default function TxPanel({ status, onSend, prefill }) {
 
   // 프리셋 가져오기 병합 방식. 파괴적 기본값을 피하려 영속하지 않고 세션마다 병합으로 시작한다.
   const [importMode, setImportMode] = useState('merge') // 'merge' | 'replace'
+
+  // 프리셋 이름 인라인 편집 상태. renamingName=편집 중인 프리셋의 현재 이름(없으면 null),
+  // renameValue=input 의 현재 값. 이름은 프리셋의 식별자(key)라 커밋 시 빈값·중복을 막는다.
+  const [renamingName, setRenamingName] = useState(null)
+  const [renameValue, setRenameValue] = useState('')
 
   const connected = !!status?.connected
 
@@ -219,6 +287,48 @@ export default function TxPanel({ status, onSend, prefill }) {
     setPresets((prev) => prev.filter((p) => p.name !== name))
     // 덮어쓰기 확인 대기 중인 대상이 삭제되면 확인 단계도 취소한다.
     setPending((cur) => (cur?.kind === 'overwrite' && cur.name === name ? null : cur))
+  }
+
+  // 프리셋 이름 인라인 편집 시작 — 현재 이름을 input 초기값으로 채운다.
+  function startRename(p) {
+    setRenamingName(p.name)
+    setRenameValue(p.name)
+    setErr(null)
+  }
+
+  // 인라인 편집 취소(Esc/blur) — 아무것도 바꾸지 않고 닫는다.
+  function cancelRename() {
+    setRenamingName(null)
+  }
+
+  // 인라인 편집 커밋(Enter). 이름은 프리셋의 식별자라 빈값·중복을 막는다:
+  //  - 빈 이름: 저장 규칙과 동일하게 거부(편집 유지)
+  //  - 변경 없음: 그냥 닫기(no-op)
+  //  - 다른 프리셋과 중복: 거부 — 두 프리셋을 합치지 않는다(사용자가 기대하지 않음)
+  // 성공 시 해당 항목의 name 만 교체하고, pending(덮어쓰기 확인)이 옛 이름을
+  // 가리키면 새 이름으로 따라가게 해 정합을 유지한다.
+  function commitRename() {
+    if (renamingName === null) return
+    const oldName = renamingName
+    const next = renameValue.trim()
+    if (next === '') {
+      setErr('프리셋 이름을 입력하세요')
+      return
+    }
+    if (next === oldName) {
+      setRenamingName(null) // 변경 없음
+      return
+    }
+    if (presets.some((p) => p.name === next)) {
+      setErr(`'${next}' 프리셋이 이미 있습니다`)
+      return
+    }
+    setErr(null)
+    setPresets((prev) => prev.map((p) => (p.name === oldName ? { ...p, name: next } : p)))
+    setPending((cur) =>
+      cur?.kind === 'overwrite' && cur.name === oldName ? { ...cur, name: next } : cur
+    )
+    setRenamingName(null)
   }
 
   // 프리셋 행 드래그 재정렬(네이티브 HTML5 DnD). 핸들(⠿)에서 드래그를 시작하고
@@ -366,16 +476,8 @@ export default function TxPanel({ status, onSend, prefill }) {
         </button>
       </div>
 
-      {/* 주기 송신: 토글 + 주기(ms). 켜져 있고 연결된 동안 현재 폼 프레임을 반복 송신 */}
+      {/* 주기 송신: 주기(ms) 입력(좌) + 토글(우). 켜져 있고 연결된 동안 현재 폼 프레임을 반복 송신 */}
       <div className="tx-row">
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={periodic}
-            onChange={(e) => setPeriodic(e.target.checked)}
-          />
-          주기 송신
-        </label>
         <label>
           주기(ms)
           <input
@@ -384,6 +486,14 @@ export default function TxPanel({ status, onSend, prefill }) {
             size={6}
             inputMode="numeric"
           />
+        </label>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={periodic}
+            onChange={(e) => setPeriodic(e.target.checked)}
+          />
+          주기 송신
         </label>
         {running && (
           <span className="tools-state" role="status">
@@ -488,27 +598,79 @@ export default function TxPanel({ status, onSend, prefill }) {
                 >
                   ⠿
                 </span>
-                <span className="tx-preset-name" title={`ID ${p.canId} ${p.dataStr}`}>
-                  {p.name}
-                </span>
+                {renamingName === p.name ? (
+                  <input
+                    className="tx-preset-rename"
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        commitRename()
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault()
+                        cancelRename()
+                      }
+                    }}
+                    onBlur={cancelRename}
+                    aria-label={`${p.name} 이름 변경`}
+                    autoFocus
+                  />
+                ) : (
+                  <span className="tx-preset-meta">
+                    <span className="tx-preset-name" title={`ID ${p.canId} ${p.dataStr}`}>
+                      {p.name}
+                    </span>
+                    <span className="tx-preset-detail">{presetDetail(p)}</span>
+                  </span>
+                )}
               </div>
               <span className="tx-preset-actions">
-                <button type="button" onClick={() => loadPreset(p)}>
-                  로드
-                </button>
-                <button type="button" onClick={() => overwritePreset(p.name)}>
-                  덮어쓰기
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="로드"
+                  title="폼으로 불러오기"
+                  onClick={() => loadPreset(p)}
+                >
+                  <ActionIcon>{ICON_LOAD}</ActionIcon>
                 </button>
                 <button
                   type="button"
-                  className="btn-primary"
+                  className="icon-btn"
+                  aria-label="이름 변경"
+                  title="이름 변경"
+                  onClick={() => startRename(p)}
+                >
+                  <ActionIcon>{ICON_RENAME}</ActionIcon>
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="덮어쓰기"
+                  title="현재 폼 값으로 덮어쓰기"
+                  onClick={() => overwritePreset(p.name)}
+                >
+                  <ActionIcon>{ICON_OVERWRITE}</ActionIcon>
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn btn-primary"
+                  aria-label="재전송"
+                  title="이 프리셋 재전송"
                   onClick={() => sendPreset(p)}
                   disabled={!connected}
                 >
-                  재전송
+                  <ActionIcon>{ICON_SEND}</ActionIcon>
                 </button>
-                <button type="button" className="btn-danger" onClick={() => deletePreset(p.name)}>
-                  삭제
+                <button
+                  type="button"
+                  className="icon-btn btn-danger"
+                  aria-label="삭제"
+                  title="삭제"
+                  onClick={() => deletePreset(p.name)}
+                >
+                  <ActionIcon>{ICON_DELETE}</ActionIcon>
                 </button>
               </span>
             </li>

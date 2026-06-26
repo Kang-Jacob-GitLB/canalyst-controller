@@ -7,8 +7,6 @@ import StatsPanel from './components/StatsPanel'
 import RxMonitor from './components/RxMonitor'
 import TxPanel from './components/TxPanel'
 import DbcTxPanel from './components/DbcTxPanel'
-// LITBIG 공식 CI(가로형) — ink 사이드바에선 CSS 인버스 필터로 흰 모노크롬 워드마크가 된다.
-import litbigLogo from './assets/logo-litbig-horizontal.png'
 
 export default function App() {
   const url = window.canctl?.coreUrl ?? 'ws://127.0.0.1:8765'
@@ -50,7 +48,6 @@ export default function App() {
       {/* 좌측 라이브러리 레일: 브랜드 + 상태 + 연결 + 도구(자주 안 만지는 설정) */}
       <nav className="sidebar">
         <div className="brand">
-          <img className="brand-logo" src={litbigLogo} alt="LITBIG" />
           <div className="brand-text">
             <h1>CANalyst-II</h1>
             <span className="brand-sub">CAN 분석 콘솔</span>
