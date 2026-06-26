@@ -665,7 +665,7 @@ export default function TxPanel({ status, onSend, prefill }) {
                 </button>
                 <button
                   type="button"
-                  className="icon-btn icon-danger"
+                  className="icon-btn btn-danger"
                   aria-label="삭제"
                   title="삭제"
                   onClick={() => deletePreset(p.name)}
