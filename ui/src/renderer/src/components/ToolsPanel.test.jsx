@@ -9,6 +9,7 @@ const baseProps = {
   filterMeta: null,
   logStatus: null,
   exportStatus: null,
+  connected: true,
   onSetFilter: noop,
   onExportLog: noop,
   onStartLog: noop,
@@ -218,5 +219,11 @@ describe('ToolsPanel', () => {
     await user.type(screen.getByLabelText(/재생 파일 경로/), 'C:\\a.jsonl')
     await user.click(screen.getByText('재생'))
     expect(onReplay).toHaveBeenCalledWith('C:\\a.jsonl')
+  })
+
+  it('CAN 미연결이면 재생 버튼이 비활성된다', async () => {
+    render(<ToolsPanel {...baseProps} connected={false} />)
+    await userEvent.setup().type(screen.getByLabelText(/재생 파일 경로/), 'C:\\a.jsonl')
+    expect(screen.getByText('재생')).toBeDisabled()
   })
 })

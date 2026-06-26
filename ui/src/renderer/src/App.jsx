@@ -76,6 +76,7 @@ export default function App() {
             logStatus={logStatus}
             replayStatus={replayStatus}
             exportStatus={exportStatus}
+            connected={!!status?.connected}
             onSetFilter={setFilter}
             onExportLog={exportLog}
             onStartLog={startLog}

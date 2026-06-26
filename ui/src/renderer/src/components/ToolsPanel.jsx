@@ -88,6 +88,7 @@ export default function ToolsPanel({
   logStatus,
   replayStatus,
   exportStatus,
+  connected,
   onSetFilter,
   onExportLog,
   onStartLog,
@@ -271,7 +272,10 @@ export default function ToolsPanel({
             재생 중지
           </button>
         ) : (
-          <button onClick={() => onReplay(replayPath)} disabled={replayPath.trim() === ''}>
+          <button
+            onClick={() => onReplay(replayPath)}
+            disabled={replayPath.trim() === '' || !connected}
+          >
             재생
           </button>
         )}
@@ -286,7 +290,7 @@ export default function ToolsPanel({
       <div className="tools-row">
         <label className="grow">
           DBC 파일 경로(신호 디코딩)
-          <input
+          <PathInput
             value={dbcPath}
             onChange={(e) => setDbcPath(e.target.value)}
             placeholder="C:\\dbc\\vehicle.dbc"
@@ -306,7 +310,7 @@ export default function ToolsPanel({
       <div className="tools-row">
         <label className="grow">
           내보낼 로그(JSONL)
-          <input
+          <PathInput
             value={exportSrc}
             onChange={(e) => setExportSrc(e.target.value)}
             placeholder="C:\\logs\\src.jsonl"
