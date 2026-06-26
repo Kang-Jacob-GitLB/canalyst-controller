@@ -309,8 +309,23 @@ export default function RxMonitor({ frames, onClear, onUseFrame }) {
           className="rx-scroll-bottom"
           onClick={scrollToBottom}
           aria-label="맨 아래로 스크롤"
+          title="맨 아래로"
         >
-          ↓ 맨 아래로
+          {/* '맨 끝으로' 점프를 뜻하는 이중 셰브론(chevrons-down), currentColor */}
+          <svg
+            viewBox="0 0 24 24"
+            width="26"
+            height="26"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="7 13 12 18 17 13" />
+            <polyline points="7 6 12 11 17 6" />
+          </svg>
         </button>
       )}
     </section>
