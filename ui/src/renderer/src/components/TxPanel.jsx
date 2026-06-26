@@ -476,16 +476,8 @@ export default function TxPanel({ status, onSend, prefill }) {
         </button>
       </div>
 
-      {/* 주기 송신: 토글 + 주기(ms). 켜져 있고 연결된 동안 현재 폼 프레임을 반복 송신 */}
+      {/* 주기 송신: 주기(ms) 입력(좌) + 토글(우). 켜져 있고 연결된 동안 현재 폼 프레임을 반복 송신 */}
       <div className="tx-row">
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={periodic}
-            onChange={(e) => setPeriodic(e.target.checked)}
-          />
-          주기 송신
-        </label>
         <label>
           주기(ms)
           <input
@@ -494,6 +486,14 @@ export default function TxPanel({ status, onSend, prefill }) {
             size={6}
             inputMode="numeric"
           />
+        </label>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={periodic}
+            onChange={(e) => setPeriodic(e.target.checked)}
+          />
+          주기 송신
         </label>
         {running && (
           <span className="tools-state" role="status">
