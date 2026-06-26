@@ -64,6 +64,9 @@ export default function RxMonitor({ frames, onClear, onUseFrame }) {
   const [query, setQuery] = useState('') // 검색/필터 텍스트
   const [grouped, setGrouped] = useState(false) // ID별 집계뷰 토글
   const [displayLimit, setDisplayLimit] = useState(500) // 표시 최대 행 수
+  // 하단 추종 여부의 '표시용' state(맨 아래로 버튼 노출 토글). 동기 계산엔 atBottomRef 를
+  // 쓰고, 이 값은 boolean 이 뒤집힐 때만 갱신해 스크롤 픽셀마다 리렌더되지 않게 한다.
+  const [atBottom, setAtBottom] = useState(true)
 
   // 일시정지 토글: 진입 시 현재 frames 를 스냅샷으로 잡고, 해제 시 라이브 복귀.
   function togglePause() {
@@ -127,10 +130,23 @@ export default function RxMonitor({ frames, onClear, onUseFrame }) {
   const atBottomRef = useRef(true) // 초기엔 바닥에 있다고 본다
 
   // 사용자가 위로 스크롤하면 추종을 멈추고, 다시 바닥 근처로 오면 재개한다.
+  // atBottomRef 는 동기 계산용(useLayoutEffect), atBottom state 는 '맨 아래로' 버튼
+  // 노출용 — boolean 이 바뀔 때만 setState 해 픽셀마다 리렌더하지 않는다.
   function handleScroll() {
     const el = wrapRef.current
     if (!el) return
-    atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+    const nowBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+    atBottomRef.current = nowBottom
+    setAtBottom((prev) => (prev === nowBottom ? prev : nowBottom))
+  }
+
+  // '맨 아래로' 버튼: 최하단으로 이동하고 하단 추종을 재개한다.
+  function scrollToBottom() {
+    const el = wrapRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+    atBottomRef.current = true
+    setAtBottom(true)
   }
 
   // 표시 상한(displayLimit)에 도달하면 filtered.length 가 고정되므로, 최신 프레임의
@@ -284,6 +300,34 @@ export default function RxMonitor({ frames, onClear, onUseFrame }) {
           </table>
         )}
       </div>
+
+      {/* 위로 스크롤해 하단에서 벗어나면 나타나는 '맨 아래로' 플로팅 버튼.
+          클릭하면 최하단으로 이동하고 자동 추종을 재개한다. */}
+      {!atBottom && (
+        <button
+          type="button"
+          className="rx-scroll-bottom"
+          onClick={scrollToBottom}
+          aria-label="맨 아래로 스크롤"
+          title="맨 아래로"
+        >
+          {/* '맨 끝으로' 점프를 뜻하는 이중 셰브론(chevrons-down), currentColor */}
+          <svg
+            viewBox="0 0 24 24"
+            width="26"
+            height="26"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="7 13 12 18 17 13" />
+            <polyline points="7 6 12 11 17 6" />
+          </svg>
+        </button>
+      )}
     </section>
   )
 }

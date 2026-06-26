@@ -147,6 +147,15 @@ ipcMain.handle('pick-save-file', async (_event, options = {}) => {
   return result.canceled ? null : result.filePath
 })
 
+// 폴더 선택 다이얼로그(로그 저장 폴더 지정용). 없는 폴더는 만들 수 있게 허용. 취소 시 null.
+ipcMain.handle('pick-directory', async (_event, options = {}) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory', 'createDirectory'],
+    defaultPath: options.defaultPath
+  })
+  return result.canceled ? null : result.filePaths[0]
+})
+
 // CANalyst-II WinUSB 드라이버 상태 조회. 장치가 안 보일 때 렌더러가 "장치 없음"의
 // 원인(미연결 / 드라이버가 WinUSB 아님)을 사용자에게 안내하는 데 쓴다.
 ipcMain.handle('check-driver', () => checkCanalystDriver())

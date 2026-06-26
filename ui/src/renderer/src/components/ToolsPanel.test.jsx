@@ -59,18 +59,27 @@ describe('ToolsPanel', () => {
     expect(screen.getByText(/기록 중/)).toBeInTheDocument()
   })
 
-  it('찾아보기 버튼이 파일 다이얼로그 경로를 입력에 채운다', async () => {
+  it('찾아보기(파일)·폴더 선택 다이얼로그 경로를 입력에 채운다', async () => {
     window.canctl = {
       pickOpenFile: vi.fn().mockResolvedValue('C:\\sel\\vehicle.dbc'),
-      pickSaveFile: vi.fn().mockResolvedValue('C:\\sel\\out.jsonl')
+      pickSaveFile: vi.fn().mockResolvedValue('C:\\sel\\out.jsonl'),
+      pickDirectory: vi.fn().mockResolvedValue('C:\\sel\\logs')
     }
     try {
       render(<ToolsPanel {...baseProps} />)
+      const user = userEvent.setup()
+      // 파일 선택('찾아보기'): 재생 / DBC / 내보낼 로그(src) — 3개
       const browse = screen.getAllByText('찾아보기')
-      expect(browse).toHaveLength(5) // 로그 / 재생 / DBC / 내보내기 src / 내보내기 dest
-      await userEvent.setup().click(browse[2]) // DBC 찾아보기
+      expect(browse).toHaveLength(3)
+      await user.click(browse[1]) // DBC 찾아보기
       expect(window.canctl.pickOpenFile).toHaveBeenCalled()
       expect(screen.getByDisplayValue('C:\\sel\\vehicle.dbc')).toBeInTheDocument()
+      // 폴더 선택: 로그 저장 폴더 / 내보내기 저장 폴더 — 2개
+      const pickDirs = screen.getAllByText('폴더 선택')
+      expect(pickDirs).toHaveLength(2)
+      await user.click(pickDirs[0]) // 로그 저장 폴더
+      expect(window.canctl.pickDirectory).toHaveBeenCalled()
+      expect(screen.getByDisplayValue('C:\\sel\\logs')).toBeInTheDocument()
     } finally {
       delete window.canctl
     }
@@ -133,28 +142,48 @@ describe('ToolsPanel', () => {
     expect(screen.queryByText(/· 마스크/)).not.toBeInTheDocument()
   })
 
-  it('내보내기 버튼은 src·dest 입력 후 onExportLog 를 src·dest·format 으로 호출한다', async () => {
+  it('내보내기는 src 파일 + 저장 폴더·자동 파일명으로 onExportLog 를 호출한다', async () => {
     const onExportLog = vi.fn()
     render(<ToolsPanel {...baseProps} onExportLog={onExportLog} />)
     const user = userEvent.setup()
     // placeholder 는 JSX 에서 백슬래시가 escape 되지 않아 조회가 까다로워 label 로 조회한다.
     await user.type(screen.getByLabelText('내보낼 로그(JSONL)'), 'C:\\in.jsonl')
-    await user.type(screen.getByLabelText('저장 경로'), 'C:\\out.csv')
+    await user.type(screen.getByLabelText(/내보내기 저장 폴더/), 'C:\\out')
     // 포맷 select 가 두 번째 콤보박스(채널 다음). CSV 선택.
     await user.selectOptions(screen.getAllByRole('combobox')[1], 'csv')
     await user.click(screen.getByText('내보내기'))
-    expect(onExportLog).toHaveBeenCalledWith('C:\\in.jsonl', 'C:\\out.csv', 'csv')
+    // dest = 저장 폴더 + 자동 파일명(canctl-export-날짜-시간.csv)
+    expect(onExportLog).toHaveBeenCalledWith(
+      'C:\\in.jsonl',
+      expect.stringMatching(/canctl-export-\d{8}-\d{6}\.csv$/),
+      'csv'
+    )
   })
 
-  it('포맷 BLF 를 선택해 내보내면 onExportLog 를 blf 로 호출한다', async () => {
+  it('포맷 BLF 를 선택해 내보내면 자동 파일명이 .blf 로 끝난다', async () => {
     const onExportLog = vi.fn()
     render(<ToolsPanel {...baseProps} onExportLog={onExportLog} />)
     const user = userEvent.setup()
     await user.type(screen.getByLabelText('내보낼 로그(JSONL)'), 'C:\\in.jsonl')
-    await user.type(screen.getByLabelText('저장 경로'), 'C:\\out.blf')
+    await user.type(screen.getByLabelText(/내보내기 저장 폴더/), 'C:\\out')
     await user.selectOptions(screen.getAllByRole('combobox')[1], 'blf')
     await user.click(screen.getByText('내보내기'))
-    expect(onExportLog).toHaveBeenCalledWith('C:\\in.jsonl', 'C:\\out.blf', 'blf')
+    expect(onExportLog).toHaveBeenCalledWith(
+      'C:\\in.jsonl',
+      expect.stringMatching(/canctl-export-\d{8}-\d{6}\.blf$/),
+      'blf'
+    )
+  })
+
+  it('로깅 시작은 저장 폴더 + 자동 파일명으로 onStartLog 를 호출한다', async () => {
+    const onStartLog = vi.fn()
+    render(<ToolsPanel {...baseProps} onStartLog={onStartLog} />)
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText(/로그 저장 폴더/), 'C:\\logs')
+    await user.click(screen.getByText('로깅 시작'))
+    expect(onStartLog).toHaveBeenCalledWith(
+      expect.stringMatching(/canctl-log-\d{8}-\d{6}\.jsonl$/)
+    )
   })
 
   it('exportStatus 성공 시 개수와 경로를 표시한다', () => {
