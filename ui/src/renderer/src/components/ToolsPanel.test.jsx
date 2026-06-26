@@ -195,4 +195,28 @@ describe('ToolsPanel', () => {
     )
     expect(screen.getByText(/42개 내보냄 → C:\\out.asc/)).toBeInTheDocument()
   })
+
+  it('재생 중이면 재생 중지 버튼을 보여주고 클릭 시 onStopReplay 를 호출한다', async () => {
+    const onStopReplay = vi.fn()
+    render(
+      <ToolsPanel
+        {...baseProps}
+        replayStatus={{ replaying: true, path: 'C:\\a.jsonl' }}
+        onStopReplay={onStopReplay}
+      />
+    )
+    await userEvent.setup().click(screen.getByText('재생 중지'))
+    expect(onStopReplay).toHaveBeenCalled()
+    // 재생 중에는 '재생' 버튼이 보이지 않는다(토글)
+    expect(screen.queryByText('재생')).not.toBeInTheDocument()
+  })
+
+  it('재생 중이 아니면 재생 버튼으로 onReplay 를 호출한다', async () => {
+    const onReplay = vi.fn()
+    render(<ToolsPanel {...baseProps} onReplay={onReplay} />)
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText(/재생 파일 경로/), 'C:\\a.jsonl')
+    await user.click(screen.getByText('재생'))
+    expect(onReplay).toHaveBeenCalledWith('C:\\a.jsonl')
+  })
 })

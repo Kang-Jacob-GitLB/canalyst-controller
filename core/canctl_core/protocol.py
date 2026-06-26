@@ -8,7 +8,7 @@ from typing import Any
 # 지원하는 클라이언트 명령
 VALID_COMMANDS = {
     "list_devices", "connect", "disconnect", "send",
-    "set_filter", "start_log", "stop_log", "replay", "load_dbc",
+    "set_filter", "start_log", "stop_log", "replay", "stop_replay", "load_dbc",
     "list_dbc_messages", "encode_send", "export_log",
     "send_periodic", "stop_periodic",
 }
@@ -96,6 +96,11 @@ def make_error(message: str) -> str:
 def make_log_status(logging: bool, path: Any = None) -> str:
     """파일 로깅 상태 통지(start_log/stop_log 결과)."""
     return json.dumps({"type": "log_status", "logging": logging, "path": path})
+
+
+def make_replay_status(replaying: bool, path: Any = None) -> str:
+    """재생 상태 통지. 시작 시 replaying=True, 종료(자연·중지·취소·에러) 시 False."""
+    return json.dumps({"type": "replay_status", "replaying": replaying, "path": path})
 
 
 def make_filter(ids: list[int], mask: int | None = None,

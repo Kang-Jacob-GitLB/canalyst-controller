@@ -86,12 +86,14 @@ export default function ToolsPanel({
   filterIds,
   filterMeta,
   logStatus,
+  replayStatus,
   exportStatus,
   onSetFilter,
   onExportLog,
   onStartLog,
   onStopLog,
   onReplay,
+  onStopReplay,
   onLoadDbc,
   initialCollapsed = false
 }) {
@@ -163,6 +165,7 @@ export default function ToolsPanel({
   }
 
   const logging = !!logStatus?.logging
+  const replaying = !!replayStatus?.replaying
 
   return (
     <section className="tools-panel">
@@ -247,7 +250,7 @@ export default function ToolsPanel({
             : '중지됨'}
       </p>
 
-      {/* 재생 */}
+      {/* 재생: 진행 중이면 중지 버튼으로 토글(로깅과 동일 패턴) */}
       <div className="tools-row">
         <label className="grow">
           재생 파일 경로(기록된 로그)
@@ -255,17 +258,29 @@ export default function ToolsPanel({
             value={replayPath}
             onChange={(e) => setReplayPath(e.target.value)}
             placeholder="C:\\logs\\can.jsonl"
+            disabled={replaying}
           />
         </label>
         {canPick && (
-          <button type="button" onClick={browseReplay}>
+          <button type="button" onClick={browseReplay} disabled={replaying}>
             찾아보기
           </button>
         )}
-        <button onClick={() => onReplay(replayPath)} disabled={replayPath.trim() === ''}>
-          재생
-        </button>
+        {replaying ? (
+          <button className="btn-danger" onClick={onStopReplay}>
+            재생 중지
+          </button>
+        ) : (
+          <button onClick={() => onReplay(replayPath)} disabled={replayPath.trim() === ''}>
+            재생
+          </button>
+        )}
       </div>
+      {replaying && (
+        <p className="tools-state" role="status">
+          재생 중 ({replayStatus?.path ?? ''})
+        </p>
+      )}
 
       {/* DBC 로드 */}
       <div className="tools-row">
