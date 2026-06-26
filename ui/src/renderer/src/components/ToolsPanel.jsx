@@ -99,13 +99,12 @@ export default function ToolsPanel({
   const [maskStr, setMaskStr] = usePersistentState('canctl.tools.maskStr', '')
   const [channelSel, setChannelSel] = usePersistentState('canctl.tools.channelSel', '') // ''=전체, '0', '1'
   const [filterErr, setFilterErr] = useState(null)
-  // 로그 저장은 '폴더'만 지정하고 파일명은 자동 생성한다(이름-날짜-시간). 과거엔 전체 파일경로를
-  // 저장했으므로 키를 logDir/exportDir 로 새로 둬 과거 전체경로 값이 폴더로 오인되지 않게 한다.
-  const [logDir, setLogDir] = usePersistentState('canctl.tools.logDir', '')
+  // 로그 저장은 '폴더'만 지정하고 파일명은 자동 생성한다(이름-날짜-시간). 로깅·내보내기가
+  // 하나의 공통 폴더(saveDir)를 공유한다. 과거 키(logPath/exportDest 전체경로)와 분리해 오인 방지.
+  const [saveDir, setSaveDir] = usePersistentState('canctl.tools.saveDir', '')
   const [replayPath, setReplayPath] = usePersistentState('canctl.tools.replayPath', '')
   const [dbcPath, setDbcPath] = usePersistentState('canctl.tools.dbcPath', '')
   const [exportSrc, setExportSrc] = usePersistentState('canctl.tools.exportSrc', '')
-  const [exportDir, setExportDir] = usePersistentState('canctl.tools.exportDir', '')
   const [exportFormat, setExportFormat] = usePersistentState('canctl.tools.exportFormat', 'asc')
   // 도구 패널 접기(기본값은 App 이 initialCollapsed 로 지정 — 앱은 접힘, 테스트는 펼침)
   const [collapsed, setCollapsed] = usePersistentState('canctl.tools.collapsed', initialCollapsed)
@@ -134,9 +133,9 @@ export default function ToolsPanel({
     onSetFilter(ids, mask, channel)
   }
 
-  async function browseLogDir() {
+  async function browseSaveDir() {
     const p = await window.canctl?.pickDirectory?.()
-    if (p) setLogDir(p)
+    if (p) setSaveDir(p)
   }
   async function browseReplay() {
     const p = await window.canctl?.pickOpenFile?.({ filters: LOG_FILTERS })
@@ -150,20 +149,15 @@ export default function ToolsPanel({
     const p = await window.canctl?.pickOpenFile?.({ filters: LOG_FILTERS })
     if (p) setExportSrc(p)
   }
-  async function browseExportDir() {
-    const p = await window.canctl?.pickDirectory?.()
-    if (p) setExportDir(p)
-  }
-
-  // 로깅 시작: 폴더 + 자동 파일명(canctl-log-날짜-시간.jsonl)을 합쳐 코어에 넘긴다.
+  // 로깅 시작: 공통 폴더 + 자동 파일명(canctl-log-날짜-시간.jsonl)을 합쳐 코어에 넘긴다.
   function startLogging() {
-    onStartLog(joinPath(logDir, makeTimestampedName('canctl-log', 'jsonl')))
+    onStartLog(joinPath(saveDir, makeTimestampedName('canctl-log', 'jsonl')))
   }
-  // 내보내기: 폴더 + 자동 파일명(canctl-export-날짜-시간.<포맷>)을 합쳐 코어에 넘긴다.
+  // 내보내기: 공통 폴더 + 자동 파일명(canctl-export-날짜-시간.<포맷>)을 합쳐 코어에 넘긴다.
   function runExport() {
     onExportLog(
       exportSrc,
-      joinPath(exportDir, makeTimestampedName('canctl-export', exportFormat)),
+      joinPath(saveDir, makeTimestampedName('canctl-export', exportFormat)),
       exportFormat
     )
   }
@@ -218,19 +212,19 @@ export default function ToolsPanel({
       <p className="tools-state">현재 필터: {fmtCurrentFilter(filterIds, filterMeta)}</p>
       {filterErr && <p className="tools-err">{filterErr}</p>}
 
-      {/* 파일 로깅: 폴더만 지정, 파일명은 자동(canctl-log-날짜-시간.jsonl) */}
+      {/* 공통 저장 폴더: 로깅·내보내기가 함께 쓴다. 파일명은 자동(이름-날짜-시간) */}
       <div className="tools-row">
         <label className="grow">
-          로그 저장 폴더 (파일명 자동)
+          저장 폴더 (로깅·내보내기 공통, 파일명 자동)
           <PathInput
-            value={logDir}
-            onChange={(e) => setLogDir(e.target.value)}
+            value={saveDir}
+            onChange={(e) => setSaveDir(e.target.value)}
             placeholder="C:\\logs"
             disabled={logging}
           />
         </label>
         {canPick && (
-          <button type="button" onClick={browseLogDir} disabled={logging}>
+          <button type="button" onClick={browseSaveDir} disabled={logging}>
             폴더 선택
           </button>
         )}
@@ -239,7 +233,7 @@ export default function ToolsPanel({
             로깅 중지
           </button>
         ) : (
-          <button className="btn-primary" onClick={startLogging} disabled={logDir.trim() === ''}>
+          <button className="btn-primary" onClick={startLogging} disabled={saveDir.trim() === ''}>
             로깅 시작
           </button>
         )}
@@ -310,19 +304,9 @@ export default function ToolsPanel({
         )}
       </div>
       <div className="tools-row">
-        <label className="grow">
-          내보내기 저장 폴더 (파일명 자동)
-          <PathInput
-            value={exportDir}
-            onChange={(e) => setExportDir(e.target.value)}
-            placeholder="C:\\logs"
-          />
-        </label>
-        {canPick && (
-          <button type="button" onClick={browseExportDir}>
-            폴더 선택
-          </button>
-        )}
+        <span className="tools-state grow">
+          위 공통 저장 폴더에 자동 파일명(canctl-export-날짜-시간)으로 저장됩니다
+        </span>
         <label>
           포맷
           <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value)}>
@@ -334,7 +318,7 @@ export default function ToolsPanel({
         <button
           className="btn-primary"
           onClick={runExport}
-          disabled={exportSrc.trim() === '' || exportDir.trim() === ''}
+          disabled={exportSrc.trim() === '' || saveDir.trim() === ''}
         >
           내보내기
         </button>

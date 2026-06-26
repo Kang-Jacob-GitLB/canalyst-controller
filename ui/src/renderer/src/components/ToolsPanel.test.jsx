@@ -74,10 +74,10 @@ describe('ToolsPanel', () => {
       await user.click(browse[1]) // DBC 찾아보기
       expect(window.canctl.pickOpenFile).toHaveBeenCalled()
       expect(screen.getByDisplayValue('C:\\sel\\vehicle.dbc')).toBeInTheDocument()
-      // 폴더 선택: 로그 저장 폴더 / 내보내기 저장 폴더 — 2개
+      // 폴더 선택: 공통 저장 폴더 — 1개(로깅·내보내기 공유)
       const pickDirs = screen.getAllByText('폴더 선택')
-      expect(pickDirs).toHaveLength(2)
-      await user.click(pickDirs[0]) // 로그 저장 폴더
+      expect(pickDirs).toHaveLength(1)
+      await user.click(pickDirs[0]) // 공통 저장 폴더
       expect(window.canctl.pickDirectory).toHaveBeenCalled()
       expect(screen.getByDisplayValue('C:\\sel\\logs')).toBeInTheDocument()
     } finally {
@@ -148,7 +148,7 @@ describe('ToolsPanel', () => {
     const user = userEvent.setup()
     // placeholder 는 JSX 에서 백슬래시가 escape 되지 않아 조회가 까다로워 label 로 조회한다.
     await user.type(screen.getByLabelText('내보낼 로그(JSONL)'), 'C:\\in.jsonl')
-    await user.type(screen.getByLabelText(/내보내기 저장 폴더/), 'C:\\out')
+    await user.type(screen.getByLabelText(/저장 폴더/), 'C:\\out')
     // 포맷 select 가 두 번째 콤보박스(채널 다음). CSV 선택.
     await user.selectOptions(screen.getAllByRole('combobox')[1], 'csv')
     await user.click(screen.getByText('내보내기'))
@@ -165,7 +165,7 @@ describe('ToolsPanel', () => {
     render(<ToolsPanel {...baseProps} onExportLog={onExportLog} />)
     const user = userEvent.setup()
     await user.type(screen.getByLabelText('내보낼 로그(JSONL)'), 'C:\\in.jsonl')
-    await user.type(screen.getByLabelText(/내보내기 저장 폴더/), 'C:\\out')
+    await user.type(screen.getByLabelText(/저장 폴더/), 'C:\\out')
     await user.selectOptions(screen.getAllByRole('combobox')[1], 'blf')
     await user.click(screen.getByText('내보내기'))
     expect(onExportLog).toHaveBeenCalledWith(
@@ -179,7 +179,7 @@ describe('ToolsPanel', () => {
     const onStartLog = vi.fn()
     render(<ToolsPanel {...baseProps} onStartLog={onStartLog} />)
     const user = userEvent.setup()
-    await user.type(screen.getByLabelText(/로그 저장 폴더/), 'C:\\logs')
+    await user.type(screen.getByLabelText(/저장 폴더/), 'C:\\logs')
     await user.click(screen.getByText('로깅 시작'))
     expect(onStartLog).toHaveBeenCalledWith(
       expect.stringMatching(/canctl-log-\d{8}-\d{6}\.jsonl$/)
