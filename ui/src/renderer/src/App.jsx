@@ -19,6 +19,7 @@ export default function App() {
     errorSeq,
     filterIds,
     logStatus,
+    replayStatus,
     stats,
     dbcMessages,
     connect,
@@ -32,6 +33,7 @@ export default function App() {
     startLog,
     stopLog,
     replay,
+    stopReplay,
     loadDbc,
     listDbcMessages,
     encodeSend,
@@ -72,12 +74,15 @@ export default function App() {
             filterIds={filterIds}
             filterMeta={filterMeta}
             logStatus={logStatus}
+            replayStatus={replayStatus}
             exportStatus={exportStatus}
+            connected={!!status?.connected}
             onSetFilter={setFilter}
             onExportLog={exportLog}
             onStartLog={startLog}
             onStopLog={stopLog}
             onReplay={replay}
+            onStopReplay={stopReplay}
             onLoadDbc={loadDbc}
           />
         </section>

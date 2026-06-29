@@ -707,6 +707,9 @@ button:focus-visible {
   background: rgba(255, 106, 19, 0.55);
   color: var(--on-accent);
   border: none;
+  /* 전역 button padding(8px 16px) 을 상속하면 flex 안의 svg 가 좌우로 압축돼 작아 보인다.
+     원형 아이콘 버튼이므로 padding 을 0 으로 눌러 아이콘이 제 크기로 가운데 오게 한다. */
+  padding: 0;
   line-height: 1;
   box-shadow: var(--shadow-card);
   cursor: pointer;
@@ -716,6 +719,7 @@ button:focus-visible {
 }
 .rx-scroll-bottom svg {
   display: block;
+  flex-shrink: 0; /* flex 컨테이너 안에서 아이콘이 줄어들지 않도록(제 크기 유지) */
 }
 .rx-scroll-bottom:hover {
   background: rgba(255, 106, 19, 0.9);

@@ -9,6 +9,7 @@ const baseProps = {
   filterMeta: null,
   logStatus: null,
   exportStatus: null,
+  connected: true,
   onSetFilter: noop,
   onExportLog: noop,
   onStartLog: noop,
@@ -74,10 +75,10 @@ describe('ToolsPanel', () => {
       await user.click(browse[1]) // DBC 찾아보기
       expect(window.canctl.pickOpenFile).toHaveBeenCalled()
       expect(screen.getByDisplayValue('C:\\sel\\vehicle.dbc')).toBeInTheDocument()
-      // 폴더 선택: 로그 저장 폴더 / 내보내기 저장 폴더 — 2개
+      // 폴더 선택: 공통 저장 폴더 — 1개(로깅·내보내기 공유)
       const pickDirs = screen.getAllByText('폴더 선택')
-      expect(pickDirs).toHaveLength(2)
-      await user.click(pickDirs[0]) // 로그 저장 폴더
+      expect(pickDirs).toHaveLength(1)
+      await user.click(pickDirs[0]) // 공통 저장 폴더
       expect(window.canctl.pickDirectory).toHaveBeenCalled()
       expect(screen.getByDisplayValue('C:\\sel\\logs')).toBeInTheDocument()
     } finally {
@@ -148,7 +149,7 @@ describe('ToolsPanel', () => {
     const user = userEvent.setup()
     // placeholder 는 JSX 에서 백슬래시가 escape 되지 않아 조회가 까다로워 label 로 조회한다.
     await user.type(screen.getByLabelText('내보낼 로그(JSONL)'), 'C:\\in.jsonl')
-    await user.type(screen.getByLabelText(/내보내기 저장 폴더/), 'C:\\out')
+    await user.type(screen.getByLabelText(/저장 폴더/), 'C:\\out')
     // 포맷 select 가 두 번째 콤보박스(채널 다음). CSV 선택.
     await user.selectOptions(screen.getAllByRole('combobox')[1], 'csv')
     await user.click(screen.getByText('내보내기'))
@@ -165,7 +166,7 @@ describe('ToolsPanel', () => {
     render(<ToolsPanel {...baseProps} onExportLog={onExportLog} />)
     const user = userEvent.setup()
     await user.type(screen.getByLabelText('내보낼 로그(JSONL)'), 'C:\\in.jsonl')
-    await user.type(screen.getByLabelText(/내보내기 저장 폴더/), 'C:\\out')
+    await user.type(screen.getByLabelText(/저장 폴더/), 'C:\\out')
     await user.selectOptions(screen.getAllByRole('combobox')[1], 'blf')
     await user.click(screen.getByText('내보내기'))
     expect(onExportLog).toHaveBeenCalledWith(
@@ -179,7 +180,7 @@ describe('ToolsPanel', () => {
     const onStartLog = vi.fn()
     render(<ToolsPanel {...baseProps} onStartLog={onStartLog} />)
     const user = userEvent.setup()
-    await user.type(screen.getByLabelText(/로그 저장 폴더/), 'C:\\logs')
+    await user.type(screen.getByLabelText(/저장 폴더/), 'C:\\logs')
     await user.click(screen.getByText('로깅 시작'))
     expect(onStartLog).toHaveBeenCalledWith(
       expect.stringMatching(/canctl-log-\d{8}-\d{6}\.jsonl$/)
@@ -194,5 +195,35 @@ describe('ToolsPanel', () => {
       />
     )
     expect(screen.getByText(/42개 내보냄 → C:\\out.asc/)).toBeInTheDocument()
+  })
+
+  it('재생 중이면 재생 중지 버튼을 보여주고 클릭 시 onStopReplay 를 호출한다', async () => {
+    const onStopReplay = vi.fn()
+    render(
+      <ToolsPanel
+        {...baseProps}
+        replayStatus={{ replaying: true, path: 'C:\\a.jsonl' }}
+        onStopReplay={onStopReplay}
+      />
+    )
+    await userEvent.setup().click(screen.getByText('재생 중지'))
+    expect(onStopReplay).toHaveBeenCalled()
+    // 재생 중에는 '재생' 버튼이 보이지 않는다(토글)
+    expect(screen.queryByText('재생')).not.toBeInTheDocument()
+  })
+
+  it('재생 중이 아니면 재생 버튼으로 onReplay 를 호출한다', async () => {
+    const onReplay = vi.fn()
+    render(<ToolsPanel {...baseProps} onReplay={onReplay} />)
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText(/재생 파일 경로/), 'C:\\a.jsonl')
+    await user.click(screen.getByText('재생'))
+    expect(onReplay).toHaveBeenCalledWith('C:\\a.jsonl')
+  })
+
+  it('CAN 미연결이면 재생 버튼이 비활성된다', async () => {
+    render(<ToolsPanel {...baseProps} connected={false} />)
+    await userEvent.setup().type(screen.getByLabelText(/재생 파일 경로/), 'C:\\a.jsonl')
+    expect(screen.getByText('재생')).toBeDisabled()
   })
 })

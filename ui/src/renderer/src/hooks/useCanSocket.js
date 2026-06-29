@@ -26,6 +26,7 @@ export function useCanSocket(url) {
   const [filterIds, setFilterIds] = useState(null) // null=미통지, []=전체통과
   const [filterMeta, setFilterMeta] = useState(null) // null=미통지, {mask,channel}(mask 없으면 정확일치, channel null 이면 전체)
   const [logStatus, setLogStatus] = useState(null) // null=미통지, {logging,path}
+  const [replayStatus, setReplayStatus] = useState(null) // null=미통지, {replaying,path}
   const [exportStatus, setExportStatus] = useState(null) // null=미통지, {ok,path,count,format}
   const [stats, setStats] = useState(EMPTY_STATS) // 누적 수신 통계(frames 와 독립)
   const [dbcMessages, setDbcMessages] = useState([]) // 로드된 DBC 메시지 정의 목록
@@ -89,6 +90,9 @@ export function useCanSocket(url) {
           break
         case 'log_status':
           setLogStatus({ logging: msg.logging, path: msg.path })
+          break
+        case 'replay_status':
+          setReplayStatus({ replaying: msg.replaying, path: msg.path })
           break
         case 'export_status':
           setExportStatus({ ok: msg.ok, path: msg.path, count: msg.count, format: msg.format })
@@ -171,6 +175,7 @@ export function useCanSocket(url) {
   const startLog = useCallback((path) => send({ type: 'start_log', path }), [send])
   const stopLog = useCallback(() => send({ type: 'stop_log' }), [send])
   const replay = useCallback((path) => send({ type: 'replay', path }), [send])
+  const stopReplay = useCallback(() => send({ type: 'stop_replay' }), [send])
   const loadDbc = useCallback((path) => send({ type: 'load_dbc', path }), [send])
   // 로그 내보내기: 기록된 src(jsonl)를 dest 로 asc/csv 표준 포맷 변환(코어가 export_status 나 error 로 통지).
   const exportLog = useCallback(
@@ -195,6 +200,7 @@ export function useCanSocket(url) {
     filterIds,
     filterMeta,
     logStatus,
+    replayStatus,
     exportStatus,
     stats,
     dbcMessages,
@@ -210,6 +216,7 @@ export function useCanSocket(url) {
     startLog,
     stopLog,
     replay,
+    stopReplay,
     loadDbc,
     listDbcMessages,
     encodeSend

@@ -325,6 +325,57 @@ def test_replay_streams_frames_and_does_not_rerecord(tmp_path):
     assert srv._recorder.logging is False
 
 
+def test_replay_emits_status_start_and_end(tmp_path):
+    """replay 는 시작 시 replay_status(True), 자연 종료 시 replay_status(False) 를 통지한다."""
+    path = str(tmp_path / "rec.jsonl")
+    from canctl_core.recorder import FrameRecorder
+    rec = FrameRecorder()
+    rec.start(path)
+    rec.record(_frames())
+    rec.stop()
+
+    srv = CanServer(FakeBackend())
+    ws = FakeWs()
+    srv._clients.add(ws)
+    asyncio.run(srv._replay_loop(path))
+
+    statuses = [m["replaying"] for m in ws.sent if m["type"] == "replay_status"]
+    assert statuses == [True, False]
+
+
+def test_stop_replay_cancels_and_emits_status_off(tmp_path):
+    """진행 중 replay 를 stop_replay 로 취소하면 finally 에서 replay_status(False) 가 통지된다.
+
+    취소(CancelledError) 시에도 종료 통지가 빠지지 않아야 UI 가 '재생 중'에 멈추지 않는다.
+    """
+    from canctl_core.recorder import FrameRecorder
+    from canctl_core.protocol import CanFrame
+    path = str(tmp_path / "rec.jsonl")
+    rec = FrameRecorder()
+    rec.start(path)
+    # ts 간격을 크게 둬 두 번째 프레임 전 sleep 중 취소 기회를 만든다
+    rec.record([
+        CanFrame(ts=0.0, channel=0, can_id=0x100, extended=False, rtr=False, dlc=1, data=[1]),
+        CanFrame(ts=10.0, channel=0, can_id=0x200, extended=False, rtr=False, dlc=1, data=[2]),
+    ])
+    rec.stop()
+
+    srv = CanServer(FakeBackend())
+    ws = FakeWs()
+    srv._clients.add(ws)
+
+    async def run():
+        srv._start_replay(path)
+        await asyncio.sleep(0.05)  # 첫 프레임 송신 후 gap sleep 진입
+        await srv._handle_command(ws, '{"type":"stop_replay"}')
+        await asyncio.gather(srv._replay_task, return_exceptions=True)
+
+    asyncio.run(run())
+    statuses = [m["replaying"] for m in ws.sent if m["type"] == "replay_status"]
+    assert statuses[0] is True
+    assert statuses[-1] is False
+
+
 def test_replay_applies_filter(tmp_path):
     path = str(tmp_path / "rec.jsonl")
     from canctl_core.recorder import FrameRecorder

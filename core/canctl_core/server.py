@@ -210,6 +210,11 @@ class CanServer:
                 await self._broadcast(protocol.make_log_status(False, path))
             elif cmd == "replay":
                 self._start_replay(msg["path"])
+            elif cmd == "stop_replay":
+                # 진행 중인 replay 취소. 종료 통지(replay_status False)는 _replay_loop 의
+                # finally 한 곳에서 보낸다(취소·자연종료·에러 공통) — 여기선 취소만 건다.
+                if self._replay_task is not None and not self._replay_task.done():
+                    self._replay_task.cancel()
             elif cmd == "load_dbc":
                 self._decoder.load(msg["path"])
                 log.info("DBC 로드 완료: %s", msg["path"])
@@ -316,7 +321,11 @@ class CanServer:
         """기록 파일을 읽어 ts 델타를 재현하며 rx 스트림으로 흘려보낸다(재기록 안 함).
 
         우리 JSONL 뿐 아니라 외부 표준 로그(asc/blf/trc/mf4)도 확장자로 인식해 재생한다.
+        시작 시 replay_status(True), 종료(자연·중지·취소·에러) 시 finally 에서 한 곳으로
+        replay_status(False) 를 통지한다. 취소(CancelledError)는 삼켜 finally 통지가
+        반드시 실행되게 한다(중지/연결해제 시 UI 가 '재생 중'에 멈춰 있지 않도록).
         """
+        await self._broadcast(protocol.make_replay_status(True, path))
         try:
             prev_ts: float | None = None
             for frame in read_frames_any(path):
@@ -333,6 +342,8 @@ class CanServer:
         except Exception as exc:
             log.exception("replay 오류: %s", path)
             await self._broadcast(protocol.make_error(f"replay 실패: {exc}"))
+        finally:
+            await self._broadcast(protocol.make_replay_status(False, path))
 
     # --- 주기 송신(send_periodic / stop_periodic) ---
 
