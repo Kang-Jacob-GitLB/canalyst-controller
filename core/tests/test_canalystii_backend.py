@@ -13,6 +13,7 @@ msg.timestamp 는 장비 내부 카운터(epoch 아님)라, 그대로 쓰면 epo
 import time
 
 import can
+import pytest
 
 from canctl_core.canalystii_backend import CanalystIIBackend
 
@@ -123,3 +124,107 @@ def test_connect_resets_ts_offset(monkeypatch):
     backend.connect(device_index=0, channel=0, bitrate=500000)
 
     assert backend._ts_offset == {}  # 연결 시 비워져 첫 프레임에서 재계산
+
+
+def test_connect_different_bitrate_per_channel(monkeypatch):
+    """채널0/채널1 비트레이트를 다르게 주면 버스는 b0 로 열고 채널1 만 b1 로 재init 한다."""
+    captured = {}
+    inits = []
+
+    class FakeDevice:
+        def init(self, channel, bitrate=None):
+            inits.append((channel, bitrate))
+
+    class FakeBus:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+            self.device = FakeDevice()
+
+        def shutdown(self):
+            pass
+
+    monkeypatch.setattr(can, "Bus", FakeBus)
+
+    backend = CanalystIIBackend()
+    backend.connect(device_index=0, channel=0, bitrate=500000, bitrate1=250000)
+
+    # 생성자는 두 채널(0,1)을 채널0 비트레이트(500k)로 연다.
+    assert captured["channel"] == (0, 1)
+    assert captured["bitrate"] == 500000
+    # 채널1 만 250k 로 재init(드라이버 init 은 재호출로 비트레이트 변경 가능).
+    assert inits == [(1, 250000)]
+    # status.device 에 채널별 비트레이트가 반영된다.
+    assert backend.device_info["bitrate"] == 500000
+    assert backend.device_info["bitrate1"] == 250000
+    assert backend.connected
+
+
+def test_connect_same_bitrate_skips_reinit(monkeypatch):
+    """두 채널 같은 속도(또는 bitrate1 생략)면 채널1 재init 을 건너뛴다."""
+    inits = []
+
+    class FakeDevice:
+        def init(self, channel, bitrate=None):
+            inits.append((channel, bitrate))
+
+    class FakeBus:
+        def __init__(self, **kwargs):
+            self.device = FakeDevice()
+
+        def shutdown(self):
+            pass
+
+    monkeypatch.setattr(can, "Bus", FakeBus)
+
+    backend = CanalystIIBackend()
+    backend.connect(device_index=0, channel=0, bitrate=500000)  # bitrate1 생략
+
+    assert inits == []  # 재init 호출 없음
+    assert backend.device_info["bitrate"] == 500000
+    assert backend.device_info["bitrate1"] == 500000  # 생략 시 채널0 과 동일
+
+
+def test_connect_rejects_unsupported_bitrate(monkeypatch):
+    """드라이버 TIMINGS 에 없는 비트레이트는 버스를 만들기 전에 거부한다(반쪽 열림 방지)."""
+    made = []
+
+    class FakeBus:
+        def __init__(self, **kwargs):
+            made.append(kwargs)
+
+        def shutdown(self):
+            pass
+
+    monkeypatch.setattr(can, "Bus", FakeBus)
+
+    backend = CanalystIIBackend()
+    with pytest.raises(ValueError):
+        backend.connect(device_index=0, channel=0, bitrate=500000, bitrate1=123456)
+    assert made == []  # 버스 생성 자체를 시도하지 않음
+    assert not backend.connected
+
+
+def test_connect_reinit_failure_is_atomic(monkeypatch):
+    """채널1 재init 이 실패하면 버스를 닫고 연결 상태(_bus/_device)를 남기지 않는다."""
+    shutdown_called = []
+
+    class FakeDevice:
+        def init(self, channel, bitrate=None):
+            raise RuntimeError("usb error")
+
+    class FakeBus:
+        def __init__(self, **kwargs):
+            self.device = FakeDevice()
+
+        def shutdown(self):
+            shutdown_called.append(True)
+
+    monkeypatch.setattr(can, "Bus", FakeBus)
+
+    backend = CanalystIIBackend()
+    # 두 값 모두 TIMINGS 통과하지만 채널1 재init(다른 값)에서 USB 오류 발생.
+    with pytest.raises(RuntimeError):
+        backend.connect(device_index=0, channel=0, bitrate=500000, bitrate1=250000)
+    assert shutdown_called == [True]   # 버스를 닫았다
+    assert not backend.connected       # _bus 가 설정되지 않았다
+    assert backend.device_info is None

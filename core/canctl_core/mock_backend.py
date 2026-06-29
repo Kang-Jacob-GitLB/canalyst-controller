@@ -58,11 +58,14 @@ class MockBackend(CanBackend):
     def list_devices(self) -> list[dict]:
         return [{"index": 0, "name": "Mock CANalyst-II", "channels": 2}]
 
-    def connect(self, device_index: int, channel: int, bitrate: int) -> None:
+    def connect(self, device_index: int, channel: int, bitrate: int,
+                bitrate1: int | None = None) -> None:
         self._channel = channel
         self._connected = True
+        # bitrate=채널0, bitrate1=채널1(생략 시 두 채널 동일). 실장비와 동일한 구조로 통지.
         self._device = {"index": device_index, "name": "Mock CANalyst-II",
-                        "bitrate": bitrate}
+                        "bitrate": bitrate,
+                        "bitrate1": bitrate if bitrate1 is None else bitrate1}
         now = time.time()
         # 가상 소스: 카운터(0x100), 사인파(0x200), 하트비트(0x7FF)
         self._sources = [

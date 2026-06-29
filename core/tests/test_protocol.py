@@ -38,6 +38,20 @@ def test_parse_connect_ok():
     assert msg["bitrate"] == 500000
 
 
+def test_parse_connect_with_bitrate1():
+    msg = parse_command(
+        '{"type":"connect","device_index":0,"channel":0,'
+        '"bitrate":500000,"bitrate1":250000}')
+    assert msg["bitrate"] == 500000
+    assert msg["bitrate1"] == 250000
+
+
+def test_parse_connect_bitrate1_optional():
+    # bitrate1 생략 시 키가 없고(=하위호환), 검증도 통과한다.
+    msg = parse_command('{"type":"connect","device_index":0,"channel":0,"bitrate":500000}')
+    assert "bitrate1" not in msg
+
+
 def test_parse_send_defaults():
     msg = parse_command('{"type":"send","channel":0,"can_id":291,"data":[1,2,3]}')
     assert msg["extended"] is False
@@ -56,6 +70,7 @@ def test_parse_send_without_data():
     '{"type":"unknown"}',                                                # 알 수 없는 명령
     '{"type":"connect","channel":0,"bitrate":1}',                        # device_index 누락
     '{"type":"connect","device_index":0,"channel":0,"bitrate":true}',    # bool bitrate
+    '{"type":"connect","device_index":0,"channel":0,"bitrate":1,"bitrate1":true}',  # bool bitrate1
     '{"type":"send","channel":0,"can_id":1,"data":[256]}',               # 바이트 범위 초과
     '{"type":"send","channel":0,"can_id":1,"data":[1,2,3,4,5,6,7,8,9]}',  # 8바이트 초과
 ])

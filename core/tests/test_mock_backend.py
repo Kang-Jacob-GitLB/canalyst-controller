@@ -62,3 +62,17 @@ def test_disconnect_clears(monkeypatch):
 def test_send_when_disconnected_raises():
     with pytest.raises(RuntimeError):
         MockBackend().send(0, 0x1, False, False, [])
+
+
+def test_connect_per_channel_bitrate():
+    backend = MockBackend()
+    backend.connect(0, 0, 500000, 250000)
+    assert backend.device_info["bitrate"] == 500000
+    assert backend.device_info["bitrate1"] == 250000
+
+
+def test_connect_bitrate1_defaults_to_bitrate():
+    backend = MockBackend()
+    backend.connect(0, 0, 500000)  # bitrate1 생략 → 채널1 도 채널0 과 동일
+    assert backend.device_info["bitrate"] == 500000
+    assert backend.device_info["bitrate1"] == 500000

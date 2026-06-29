@@ -209,6 +209,17 @@ def test_reconnect_reports_fresh_bitrate(server, capsys):
     assert out["device"]["bitrate"] == 250000  # 낡은 500000 이 아니라 새 값
 
 
+def test_connect_per_channel_bitrate(server, capsys):
+    # --bitrate1 로 채널별 다른 비트레이트를 주면 status.device 에 둘 다 반영된다.
+    url = f"ws://127.0.0.1:{server.port}"
+    code, out, _ = run_cli(capsys, ["--url", url, "connect", "0",
+                                    "--bitrate", "500000", "--bitrate1", "250000"])
+    assert code == 0
+    assert out["connected"] is True
+    assert out["device"]["bitrate"] == 500000
+    assert out["device"]["bitrate1"] == 250000
+
+
 def test_send_without_connect_surfaces_server_error(server, capsys):
     url = f"ws://127.0.0.1:{server.port}"
     # 연결 안 된 상태에서 send → mock 이 RuntimeError → 서버 error → exit 1

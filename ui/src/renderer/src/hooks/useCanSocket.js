@@ -145,8 +145,15 @@ export function useCanSocket(url) {
   }, [])
 
   const connect = useCallback(
-    (deviceIndex, channel, bitrate) =>
-      send({ type: 'connect', device_index: deviceIndex, channel, bitrate }),
+    // bitrate1 생략(null/undefined) 시 메시지에서 빼 서버가 bitrate 와 동일하게 처리(하위호환).
+    (deviceIndex, channel, bitrate, bitrate1) =>
+      send({
+        type: 'connect',
+        device_index: deviceIndex,
+        channel,
+        bitrate,
+        ...(bitrate1 != null ? { bitrate1 } : {})
+      }),
     [send]
   )
   const disconnect = useCallback(() => send({ type: 'disconnect' }), [send])

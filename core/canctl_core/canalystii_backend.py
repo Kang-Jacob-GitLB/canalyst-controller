@@ -76,32 +76,56 @@ class CanalystIIBackend(CanBackend):
         # 첫 장치(index 0, 2채널)를 기본 제공하고, 실제 존재 여부는 connect 시 판명한다.
         return [{"index": 0, "name": "CANalyst-II", "channels": 2}]
 
-    def connect(self, device_index: int, channel: int, bitrate: int) -> None:
+    def connect(self, device_index: int, channel: int, bitrate: int,
+                bitrate1: int | None = None) -> None:
         if self._bus is not None:
             self.disconnect()
         _ensure_usb_backend()  # Windows libusb 백엔드 보장
         import can  # 지연 import (실장비 미사용 시 로드 부담 제거)
+        from canalystii.device import TIMINGS  # 비트레이트→BTR 타이밍 표
+
+        b0 = bitrate
+        b1 = bitrate if bitrate1 is None else bitrate1
+        # python-can/canalystii 는 TIMINGS 에 등록된 비트레이트만 받는다(임의값 불가).
+        # 버스를 만들기 전에 두 채널 값을 모두 검증해 반쪽 열린 상태를 원천 차단한다.
+        for b in (b0, b1):
+            if b not in TIMINGS:
+                raise ValueError(
+                    f"지원하지 않는 비트레이트: {b} (지원: {sorted(TIMINGS)})")
 
         # CANalyst-II 는 2채널 장비다. 두 채널(0,1)을 모두 init·start 해서
         # 어느 채널로든 송수신할 수 있게 한다. 한 채널만 열면 driver 가
         # init 되지 않은 채널 송신을 RuntimeError("Channel N is not initialized")
         # 로 거부하므로, 연결 채널과 다른 채널로 송신하면 실패한다.
-        # (channel 인자는 프로토콜 호환을 위해 받지만 채널 선택에는 쓰지 않는다.
-        #  두 채널 모두 connect 의 bitrate 로 초기화된다.)
+        # (channel 인자는 프로토콜 호환을 위해 받지만 채널 선택에는 쓰지 않는다.)
         self._channel = channel
         # 장비/채널 재시작 시 카운터가 0부터 다시 시작하므로 오프셋을 비운다.
         # (첫 프레임에서 재계산)
         self._ts_offset = {}
-        self._bus = can.Bus(
+        # 생성자가 channel=(0,1) 을 모두 b0 로 init·start 한다. bus.channels==[0,1] 이
+        # 유지되어야 poll/송신 라우팅이 두 채널을 모두 다루므로, "채널0만 열고 1을 수동
+        # init" 하는 식으로 바꾸지 않는다(그러면 채널1 RX/TX 가 조용히 끊긴다).
+        bus = can.Bus(
             interface="canalystii",
             channel=(0, 1),
             device=device_index,
-            bitrate=bitrate,
+            bitrate=b0,
         )
+        # 채널1 만 속도가 다르면 재init 으로 덮어쓴다(드라이버 init 은 재호출로 비트레이트
+        # 변경 가능, init 후 자동 start). 실패 시 버스를 닫아 반쪽 열린 상태를 남기지 않는다.
+        if b1 != b0:
+            try:
+                bus.device.init(1, bitrate=b1)
+            except Exception:
+                try:
+                    bus.shutdown()
+                except Exception:
+                    pass
+                raise
+        self._bus = bus
         self._device = {"index": device_index, "name": "CANalyst-II",
-                        "bitrate": bitrate}
-        log.info("연결됨: device=%d channels=(0,1) bitrate=%d",
-                 device_index, bitrate)
+                        "bitrate": b0, "bitrate1": b1}
+        log.info("연결됨: device=%d ch0=%d ch1=%d", device_index, b0, b1)
 
     def disconnect(self) -> None:
         if self._bus is not None:

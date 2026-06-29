@@ -322,23 +322,31 @@ def build_app(engine: CanctlEngine):
         """현재 라이브 세션 상태를 반환한다.
 
         반환: ws_connected(데몬 연결), connected(장치 연결), backend, device(index/name/
-        bitrate), channels, server_filter(현재 수신 필터 또는 null), capturing(캡처 중 여부),
-        capture_path(기록 중인 파일 경로 또는 null).
+        bitrate=채널0/bitrate1=채널1), channels, server_filter(현재 수신 필터 또는 null),
+        capturing(캡처 중 여부), capture_path(기록 중인 파일 경로 또는 null).
         """
         return await engine.status()
 
     @app.tool()
     async def can_connect(device_index: int = 0, bitrate: int = 500000,
-                          channel: int = 0) -> dict:
-        """CAN 장치를 연다(장비의 두 채널 0,1 을 모두 같은 bitrate 로). 호출 간 연결 유지.
+                          bitrate1: int | None = None, channel: int = 0) -> dict:
+        """CAN 장치를 연다(2채널 장비; 채널0·채널1 을 독립 비트레이트로 열 수 있다). 호출 간 연결 유지.
 
-        bitrate: 정수 bps(예 500000). 비트레이트를 바꾸려면 다른 값으로 다시 호출(재연결).
-        device_index: can_status/장치 목록의 인덱스(보통 0). channel: 프로토콜 호환용(채널
-        선택엔 미사용). 반환: 연결 후 status.
+        bitrate: 채널0 비트레이트(정수 bps, 예 500000). bitrate1: 채널1 비트레이트 —
+        생략하면 bitrate 와 같아 두 채널을 같은 속도로 연다. 다른 속도로 채널을 분리하려면
+        bitrate1 을 지정하라(예 bitrate=500000, bitrate1=250000). 둘 다 드라이버 지원
+        표준값이어야 한다(10000/20000/50000/100000/125000/250000/500000/800000/1000000 등).
+        비트레이트를 바꾸려면 다른 값으로 다시 호출(재연결). device_index: can_status/장치
+        목록의 인덱스(보통 0). channel: 프로토콜 호환용(채널 선택엔 미사용).
+        반환: 연결 후 status(device.bitrate=채널0, device.bitrate1=채널1).
         """
+        payload: dict[str, Any] = {
+            "type": "connect", "device_index": device_index,
+            "channel": channel, "bitrate": bitrate}
+        if bitrate1 is not None:
+            payload["bitrate1"] = bitrate1
         return await engine.request(
-            {"type": "connect", "device_index": device_index,
-             "channel": channel, "bitrate": bitrate},
+            payload,
             lambda m: m.get("type") == "status" and m.get("connected") is True)
 
     @app.tool()

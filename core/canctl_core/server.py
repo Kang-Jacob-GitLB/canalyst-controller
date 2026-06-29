@@ -168,7 +168,9 @@ class CanServer:
             elif cmd == "connect":
                 # 재연결 시 이전 연결에 묶인 주기 송신을 정리(stale TX 방지).
                 await self._stop_periodics()
-                self._backend.connect(msg["device_index"], msg["channel"], msg["bitrate"])
+                # bitrate1 생략 시 None → 백엔드가 bitrate 와 동일하게 처리(하위호환).
+                self._backend.connect(msg["device_index"], msg["channel"],
+                                      msg["bitrate"], msg.get("bitrate1"))
                 await self._broadcast(self._status_msg())
             elif cmd == "disconnect":
                 self._backend.disconnect()

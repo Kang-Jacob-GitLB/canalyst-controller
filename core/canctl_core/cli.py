@@ -214,10 +214,14 @@ async def h_connect(ws, args) -> dict:
     # 를 돌려줄 수 있다(재연결로 bitrate 를 바꾸는 워크플로에서 오답). 먼저 그 연결 직후
     # status 를 비운 뒤 connect 를 보내고, 새로 브로드캐스트되는 status 를 기다린다.
     await _await_message(ws, lambda m: m.get("type") == "status", args.timeout)
-    await ws.send(json.dumps({
+    payload = {
         "type": "connect", "device_index": args.device_index,
         "channel": args.channel, "bitrate": args.bitrate,
-    }))
+    }
+    # --bitrate1 미지정 시 보내지 않음 → 서버가 bitrate 와 동일하게 처리(하위호환).
+    if args.bitrate1 is not None:
+        payload["bitrate1"] = args.bitrate1
+    await ws.send(json.dumps(payload))
     # 연결 완료 status(connected=true)까지 대기. 실패는 server error 로 중단된다.
     return await _await_message(
         ws, lambda m: m.get("type") == "status" and m.get("connected") is True,
@@ -471,11 +475,15 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("status", help="현재 연결 상태 조회")
     sub.add_parser("devices", help="연결 가능한 장치 목록")
 
-    p = sub.add_parser("connect", help="장치 연결(두 채널 모두 같은 비트레이트로 열림)")
+    p = sub.add_parser("connect",
+                       help="장치 연결(채널0·채널1 비트레이트를 따로 지정 가능)")
     p.add_argument("device_index", type=int, help="장치 인덱스(devices 의 index)")
     p.add_argument("--channel", type=int, default=0,
                    help="프로토콜 호환용(채널 선택엔 미사용)")
-    p.add_argument("--bitrate", type=int, default=500000, help="비트레이트(기본 500000)")
+    p.add_argument("--bitrate", type=int, default=500000,
+                   help="채널0 비트레이트(기본 500000)")
+    p.add_argument("--bitrate1", type=int, default=None,
+                   help="채널1 비트레이트(생략 시 --bitrate 와 동일)")
 
     sub.add_parser("disconnect", help="장치 연결 해제")
 

@@ -39,7 +39,7 @@ CANalyst-II 제어 데스크톱 앱. Python 코어(CAN + WebSocket) + Electron/R
 ## WebSocket 프로토콜 (JSON, 한 줄=한 메시지)
 
 ### Client→Server 명령
-- 연결: `list_devices` / `connect{device_index,channel,bitrate}` / `disconnect` — **connect 는 장비의 두 채널(0,1)을 모두 같은 `bitrate` 로 열어** 어느 채널로든 송수신이 가능하다(`channel` 필드는 프로토콜 호환용으로 유지되나 채널 선택에는 쓰이지 않음). 채널별 비트레이트는 미지원.
+- 연결: `list_devices` / `connect{device_index,channel,bitrate,bitrate1?}` / `disconnect` — **connect 는 장비의 두 채널(0,1)을 모두 열어** 어느 채널로든 송수신이 가능하다(`channel` 필드는 프로토콜 호환용으로 유지되나 채널 선택에는 쓰이지 않음). `bitrate`=채널0, `bitrate1`=채널1 비트레이트로 **채널별 독립 속도**를 지원한다(`bitrate1` 생략 시 `bitrate` 와 동일 = 두 채널 같은 속도, 하위호환). 두 값 모두 드라이버 지원 표준값(10000/20000/.../1000000)이어야 한다.
 - 송신: `send{channel,can_id,extended,rtr,data:[..]}`
 - 주기 송신: `send_periodic{channel,can_id,extended?,rtr?,data?,period,count?}` / `stop_periodic{id?}` — `period`(초, 0 초과)마다 프레임을 반복 송신. `count` 생략 시 무한, 지정 시 그 횟수만큼. `stop_periodic` 의 `id` 생략 시 전체 중지. **코어 asyncio 타이머 기반**(canalystii 가 하드웨어 주기송신을 노출하지 않아 소프트웨어 타이밍 — 고부하 시 약간의 지터). disconnect/재connect 시 자동 정리. 각 송신은 `rx`(dir=tx)로 echo.
 - 수신 필터: `set_filter{ids:[..],mask?,channel?}` — 빈 `ids`=전체 통과. `mask` 생략 시 정확 일치(all-ones), `channel` 생략/null 시 전체 채널. **set_filter는 필터 전체를 교체**(미지정 항목은 기본값으로 리셋).
@@ -48,7 +48,7 @@ CANalyst-II 제어 데스크톱 앱. Python 코어(CAN + WebSocket) + Electron/R
 - DBC: `load_dbc{path}` / `list_dbc_messages` / `encode_send{message,signals:{신호명:값},channel}` — 신호값을 인코딩해 프레임으로 송신.
 
 ### Server→Client 이벤트
-- `devices{list}` / `status{connected,backend,device,channels}` — 연결 시 `device`={index,name,bitrate}, `channels`=[0,1] 채워짐(미연결·미구현 백엔드는 null).
+- `devices{list}` / `status{connected,backend,device,channels}` — 연결 시 `device`={index,name,bitrate,bitrate1}(bitrate=채널0, bitrate1=채널1 속도; 같은 속도로 열면 둘이 같다), `channels`=[0,1] 채워짐(미연결·미구현 백엔드는 null).
 - `rx{frames:[{ts,channel,can_id,extended,rtr,dlc,data,dir,decoded?}]}`(배칭) — `dir`은 `"rx"`/`"tx"`, DBC 로드 시 각 프레임에 `decoded{message,signals}` 부착.
 - `error{message}`
 - `log_status{logging,path}` / `filter{ids,mask,channel}`(현재 필터 통지)
@@ -57,8 +57,8 @@ CANalyst-II 제어 데스크톱 앱. Python 코어(CAN + WebSocket) + Electron/R
 - `export_status{ok,path,count,format}`
 
 ### 참고
-- `bitrate`는 정수(125000/250000/500000/1000000 등 표준값 + 사용자 지정 임의값). UI는 드롭다운/사용자 지정 입력.
-- 한계: canalystii는 송신 ACK/버스에러 보고 불가 → TX는 "큐잉됨" 수준만 반영. CAN FD·다중 장치 자동열거·채널별 비트레이트 미지원.
+- `bitrate`/`bitrate1`은 정수이며 **드라이버 `TIMINGS` 표의 표준값만** 받는다(10000/20000/50000/100000/125000/250000/500000/800000/1000000 등 — 임의값은 거부). UI는 드롭다운/사용자 지정 입력, "채널별 다른 속도" 토글로 채널1 속도를 따로 지정. 채널별 다른 속도는 채널1 만 드라이버 `init` 재호출로 덮어써 적용한다.
+- 한계: canalystii는 송신 ACK/버스에러 보고 불가 → TX는 "큐잉됨" 수준만 반영. CAN FD·다중 장치 자동열거 미지원.
 
 ## 코드 컨벤션
 

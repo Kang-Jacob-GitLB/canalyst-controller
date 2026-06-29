@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { usePersistentState } from '../hooks/usePersistentState'
 
-// 표준 비트레이트(canalystii 는 임의값도 받지만 표준값 권장 → 드롭다운 고정)
+// 표준 비트레이트(드라이버 TIMINGS 표에 등록된 값 → 드롭다운 고정)
 const BITRATES = [10000, 20000, 50000, 100000, 125000, 250000, 500000, 800000, 1000000]
 
 // WinUSB 드라이버 교체 도구. main 의 open-external 이 https 만 허용한다.
@@ -36,8 +36,7 @@ function DriverHint({ hint }) {
   return null
 }
 
-// 드롭다운에서 "사용자 지정" 항목을 식별하는 sentinel.
-// 'canctl.conn.bitrate' 에는 절대 들어가지 않고 select value 로만 쓰인다.
+// 드롭다운에서 "사용자 지정" 항목을 식별하는 sentinel. select value 로만 쓰인다.
 const CUSTOM = 'custom'
 
 // 사용자 지정 입력 문자열이 유효한 양의 정수 비트레이트인지 검사한다.
@@ -48,14 +47,56 @@ function parseCustomBitrate(text) {
   return Number.isInteger(n) && n > 0 ? n : null
 }
 
+// 비트레이트 선택 UI(드롭다운 + 사용자 지정 입력). 상태는 부모가 소유하고 props 로 내려준다.
+// 채널0/채널1 이 동일 UI 를 재사용한다.
+function BitrateControls({
+  label, customLabel, bitrate, isCustom, customText, invalid, disabled,
+  onSelect, onCustomChange, customPlaceholder
+}) {
+  return (
+    <>
+      <label>
+        {label}
+        <select value={isCustom ? CUSTOM : bitrate} onChange={onSelect} disabled={disabled}>
+          {BITRATES.map((b) => (
+            <option key={b} value={b}>
+              {b.toLocaleString()} bps
+            </option>
+          ))}
+          <option value={CUSTOM}>사용자 지정…</option>
+        </select>
+      </label>
+      {isCustom && (
+        <label>
+          {customLabel}
+          <input
+            type="number"
+            min="1"
+            step="1"
+            placeholder={customPlaceholder}
+            value={customText}
+            onChange={onCustomChange}
+            disabled={disabled}
+            aria-invalid={invalid}
+          />
+        </label>
+      )}
+    </>
+  )
+}
+
 export default function ConnectionBar({ devices, status, onConnect, onDisconnect, onRefresh }) {
   const [deviceIndex, setDeviceIndex] = usePersistentState('canctl.conn.deviceIndex', 0)
-  // 표준 드롭다운 값(항상 숫자) — 기존 동작/키 유지
+  // 채널0 비트레이트(기존 키 유지 — 저장된 사용자 설정 보존)
   const [bitrate, setBitrate] = usePersistentState('canctl.conn.bitrate', 500000)
-  // 'standard' | 'custom' — 어느 쪽 비트레이트를 쓸지
   const [bitrateMode, setBitrateMode] = usePersistentState('canctl.conn.bitrateMode', 'standard')
-  // 사용자 지정 입력값(controlled, 문자열로 보존 — 빈칸/입력중 상태 표현 위해)
   const [bitrateCustom, setBitrateCustom] = usePersistentState('canctl.conn.bitrateCustom', '')
+  // 채널별 다른 속도(채널1 비트레이트를 따로 지정). 기본 off → 기존 동작과 동일.
+  const [split, setSplit] = usePersistentState('canctl.conn.splitChannels', false)
+  // 채널1 비트레이트(split 일 때만 사용·노출)
+  const [bitrate1, setBitrate1] = usePersistentState('canctl.conn.bitrate1', 250000)
+  const [bitrate1Mode, setBitrate1Mode] = usePersistentState('canctl.conn.bitrate1Mode', 'standard')
+  const [bitrate1Custom, setBitrate1Custom] = usePersistentState('canctl.conn.bitrate1Custom', '')
   const connected = !!status?.connected
 
   // 장치가 0개이고 미연결일 때만, 왜 안 보이는지(미연결/드라이버 문제)를 진단한다.
@@ -79,21 +120,33 @@ export default function ConnectionBar({ devices, status, onConnect, onDisconnect
     }
   }, [noDevices])
 
-  const isCustom = bitrateMode === CUSTOM
-  const customValue = parseCustomBitrate(bitrateCustom)
-  const customInvalid = isCustom && customValue === null
-  // 실제 연결에 사용할 비트레이트: 사용자 지정 모드면 검증된 정수, 아니면 드롭다운 값
-  const effectiveBitrate = isCustom ? customValue : bitrate
+  // 채널0 유효 비트레이트
+  const isCustom0 = bitrateMode === CUSTOM
+  const customValue0 = parseCustomBitrate(bitrateCustom)
+  const invalid0 = isCustom0 && customValue0 === null
+  const effectiveBitrate0 = isCustom0 ? customValue0 : bitrate
+  // 채널1 유효 비트레이트(split 일 때만 의미)
+  const isCustom1 = bitrate1Mode === CUSTOM
+  const customValue1 = parseCustomBitrate(bitrate1Custom)
+  const invalid1 = split && isCustom1 && customValue1 === null
+  const effectiveBitrate1 = isCustom1 ? customValue1 : bitrate1
 
-  function handleBitrateSelect(e) {
-    const v = e.target.value
-    if (v === CUSTOM) {
-      setBitrateMode(CUSTOM)
-    } else {
-      setBitrateMode('standard')
-      setBitrate(Number(v))
+  const connectInvalid = invalid0 || invalid1
+
+  // 드롭다운 onChange: '사용자 지정' 선택 시 custom 모드, 아니면 표준값 갱신.
+  function makeSelectHandler(setMode, setStandard) {
+    return (e) => {
+      const v = e.target.value
+      if (v === CUSTOM) {
+        setMode(CUSTOM)
+      } else {
+        setMode('standard')
+        setStandard(Number(v))
+      }
     }
   }
+  const handleBitrate0Select = makeSelectHandler(setBitrateMode, setBitrate)
+  const handleBitrate1Select = makeSelectHandler(setBitrate1Mode, setBitrate1)
 
   return (
     <div className="connection-bar">
@@ -113,39 +166,44 @@ export default function ConnectionBar({ devices, status, onConnect, onDisconnect
         </select>
       </label>
 
-      {/* 채널 선택기 없음: 연결 시 두 채널(0,1)을 모두 열므로 연결 단계에서
-          채널을 고를 필요가 없다. 송신 채널은 송신 폼에서, 수신 채널은 필터에서 고른다. */}
+      {/* 채널 선택기 없음: 연결 시 두 채널(0,1)을 모두 연다. 채널별 비트레이트는 아래 토글로 분리. */}
 
-      <label>
-        비트레이트
-        <select
-          value={isCustom ? CUSTOM : bitrate}
-          onChange={handleBitrateSelect}
+      <BitrateControls
+        label={split ? '채널0 비트레이트' : '비트레이트'}
+        customLabel={split ? '채널0 사용자 지정(bps)' : '사용자 지정(bps)'}
+        bitrate={bitrate}
+        isCustom={isCustom0}
+        customText={bitrateCustom}
+        invalid={invalid0}
+        disabled={connected}
+        onSelect={handleBitrate0Select}
+        onCustomChange={(e) => setBitrateCustom(e.target.value)}
+        customPlaceholder="예: 83330"
+      />
+
+      <label className="conn-split-toggle">
+        <input
+          type="checkbox"
+          checked={split}
+          onChange={(e) => setSplit(e.target.checked)}
           disabled={connected}
-        >
-          {BITRATES.map((b) => (
-            <option key={b} value={b}>
-              {b.toLocaleString()} bps
-            </option>
-          ))}
-          <option value={CUSTOM}>사용자 지정…</option>
-        </select>
+        />
+        채널별 다른 속도
       </label>
 
-      {isCustom && (
-        <label>
-          사용자 지정(bps)
-          <input
-            type="number"
-            min="1"
-            step="1"
-            placeholder="예: 83333"
-            value={bitrateCustom}
-            onChange={(e) => setBitrateCustom(e.target.value)}
-            disabled={connected}
-            aria-invalid={customInvalid}
-          />
-        </label>
+      {split && (
+        <BitrateControls
+          label="채널1 비트레이트"
+          customLabel="채널1 사용자 지정(bps)"
+          bitrate={bitrate1}
+          isCustom={isCustom1}
+          customText={bitrate1Custom}
+          invalid={invalid1}
+          disabled={connected}
+          onSelect={handleBitrate1Select}
+          onCustomChange={(e) => setBitrate1Custom(e.target.value)}
+          customPlaceholder="예: 250000"
+        />
       )}
 
       {connected ? (
@@ -156,8 +214,13 @@ export default function ConnectionBar({ devices, status, onConnect, onDisconnect
         <button
           className="btn-primary"
           // 두 채널을 모두 여므로 connect 의 channel 인자는 쓰이지 않는다(프로토콜 호환용 0).
-          onClick={() => onConnect(deviceIndex, 0, effectiveBitrate)}
-          disabled={customInvalid}
+          // split off 면 4번째 인자를 아예 넘기지 않아 두 채널이 같은 속도로 열린다(기존 동작).
+          onClick={() =>
+            split
+              ? onConnect(deviceIndex, 0, effectiveBitrate0, effectiveBitrate1)
+              : onConnect(deviceIndex, 0, effectiveBitrate0)
+          }
+          disabled={connectInvalid}
         >
           연결
         </button>
@@ -168,7 +231,7 @@ export default function ConnectionBar({ devices, status, onConnect, onDisconnect
 
       {noDevices && driverHint && <DriverHint hint={driverHint} />}
 
-      {customInvalid && (
+      {connectInvalid && (
         <p className="app-error">비트레이트는 양의 정수(bps)여야 합니다.</p>
       )}
     </div>

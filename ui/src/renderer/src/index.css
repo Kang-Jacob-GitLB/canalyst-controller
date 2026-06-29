@@ -580,6 +580,19 @@ button:focus-visible {
   width: 100%;
   margin-top: 2px;
 }
+/* 채널별 다른 속도 토글: 체크박스+라벨을 가로로 정렬한다.
+   (기본 .connection-bar label 의 column 배치와 .connection-bar input 의 풀폭을 덮어써
+    체크박스가 가로 전체로 늘어나지 않게 한다.) */
+.connection-bar label.conn-split-toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sp-2);
+  cursor: pointer;
+}
+.connection-bar label.conn-split-toggle input {
+  width: auto;
+  margin: 0;
+}
 
 /* 장치 미검출 원인 안내(드라이버 상태). 기본은 정보 톤, 경고형은 WinUSB 안내. */
 .driver-hint {

@@ -163,6 +163,9 @@ def parse_command(raw: str) -> dict[str, Any]:
         _require_int(msg, "device_index")
         _require_int(msg, "channel")
         _require_int(msg, "bitrate")
+        # bitrate1(채널1 비트레이트)은 선택. 생략/None 이면 bitrate 와 동일(하위호환).
+        if msg.get("bitrate1") is not None:
+            _require_int(msg, "bitrate1")
     elif cmd == "send":
         _require_int(msg, "channel")
         _require_int(msg, "can_id")
