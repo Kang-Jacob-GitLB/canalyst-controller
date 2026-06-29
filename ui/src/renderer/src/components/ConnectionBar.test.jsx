@@ -112,6 +112,47 @@ describe('ConnectionBar', () => {
     expect(onConnect).toHaveBeenCalledWith(0, 0, 250000)
   })
 
+  it('채널별 다른 속도 토글 → 채널1 비트레이트 선택 → onConnect 4번째 인자로 전달', async () => {
+    const user = userEvent.setup()
+    const onConnect = vi.fn()
+    render(
+      <ConnectionBar
+        devices={devices}
+        status={{ connected: false }}
+        onConnect={onConnect}
+        onDisconnect={() => {}}
+        onRefresh={() => {}}
+      />
+    )
+
+    // 토글 off 상태에서는 채널1 비트레이트 컨트롤이 없다
+    expect(screen.queryByLabelText('채널1 비트레이트')).not.toBeInTheDocument()
+
+    await user.click(screen.getByLabelText('채널별 다른 속도'))
+    // 채널0 라벨이 '채널0 비트레이트'로 바뀌고 채널1 컨트롤이 나타난다
+    await user.selectOptions(screen.getByLabelText('채널1 비트레이트'), '250000')
+    // 채널0 은 기본 500k 유지
+    await user.click(screen.getByText('연결'))
+    expect(onConnect).toHaveBeenCalledWith(0, 0, 500000, 250000)
+  })
+
+  it('토글 off(기본)면 onConnect 를 3개 인자로 호출(하위호환)', async () => {
+    const onConnect = vi.fn()
+    render(
+      <ConnectionBar
+        devices={devices}
+        status={{ connected: false }}
+        onConnect={onConnect}
+        onDisconnect={() => {}}
+        onRefresh={() => {}}
+      />
+    )
+    await userEvent.setup().click(screen.getByText('연결'))
+    // 4번째 인자(bitrate1)를 넘기지 않아야 한다
+    expect(onConnect).toHaveBeenCalledWith(0, 0, 500000)
+    expect(onConnect.mock.calls[0]).toHaveLength(3)
+  })
+
   it('장치 0개 + WinUSB 아님 → Zadig 안내 노출, 버튼이 외부 링크 호출', async () => {
     window.canctl = {
       checkDriver: vi.fn().mockResolvedValue({ state: 'wrong-driver', services: ['usbccgp'] }),

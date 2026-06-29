@@ -151,6 +151,17 @@ describe('useCanSocket', () => {
     })
   })
 
+  it('connect 는 bitrate1 을 주면 채널별 비트레이트로 전송한다', () => {
+    const { result } = renderHook(() => useCanSocket('ws://x'))
+    const ws = FakeWebSocket.last
+    act(() => ws._open())
+
+    act(() => result.current.connect(0, 0, 500000, 250000))
+    expect(JSON.parse(ws.sent[1])).toEqual({
+      type: 'connect', device_index: 0, channel: 0, bitrate: 500000, bitrate1: 250000
+    })
+  })
+
   it('clearFrames 는 누적된 frames 를 비운다', () => {
     const { result } = renderHook(() => useCanSocket('ws://x'))
     const ws = FakeWebSocket.last

@@ -443,11 +443,13 @@ def test_status_includes_device_and_channels_when_connected():
     # 미연결 시 None
     pre = json.loads(srv._status_msg())
     assert pre["device"] is None and pre["channels"] is None
-    # 연결 후 device({index,name,bitrate})·channels([0,1]) 채워짐
+    # 연결 후 device({index,name,bitrate,bitrate1})·channels([0,1]) 채워짐
+    # bitrate1 생략 시 채널1 도 채널0 과 동일 속도로 통지된다.
     backend.connect(0, 1, 500000)
     post = json.loads(srv._status_msg())
     assert post["connected"] is True
-    assert post["device"] == {"index": 0, "name": "Mock CANalyst-II", "bitrate": 500000}
+    assert post["device"] == {"index": 0, "name": "Mock CANalyst-II",
+                              "bitrate": 500000, "bitrate1": 500000}
     assert post["channels"] == [0, 1]
 
 

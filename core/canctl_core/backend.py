@@ -22,9 +22,10 @@ class CanBackend(ABC):
 
     @property
     def device_info(self) -> dict | None:
-        """연결된 장치 정보({index, name, bitrate} 등). 미연결 시 None.
+        """연결된 장치 정보({index, name, bitrate, bitrate1} 등). 미연결 시 None.
 
-        status 메시지의 device 필드로 노출된다. 기본 구현은 None(미구현 백엔드는
+        status 메시지의 device 필드로 노출된다. bitrate 는 채널0, bitrate1 은 채널1 의
+        비트레이트(두 채널을 같은 속도로 열면 둘이 같다). 기본 구현은 None(미구현 백엔드는
         장치 정보를 통지하지 않음). mock·canalystii 가 connect 에서 채운다.
         """
         return None
@@ -42,7 +43,12 @@ class CanBackend(ABC):
         """연결 가능한 장치 목록. 각 항목: {index, name, channels}."""
 
     @abstractmethod
-    def connect(self, device_index: int, channel: int, bitrate: int) -> None:
+    def connect(self, device_index: int, channel: int, bitrate: int,
+                bitrate1: int | None = None) -> None:
+        """장치를 연다. bitrate 는 채널0, bitrate1 은 채널1 의 비트레이트.
+
+        bitrate1 이 None 이면 bitrate 와 동일하게 두 채널을 같은 속도로 연다(하위호환).
+        """
         ...
 
     @abstractmethod
