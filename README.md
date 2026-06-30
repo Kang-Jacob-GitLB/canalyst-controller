@@ -250,6 +250,13 @@ npm run dist
 패키징된 앱의 main 프로세스는 `process.resourcesPath/core/canalyst-core(.exe)` 를 사이드카로 실행합니다.
 자세한 절차는 `scripts/build-core.md` 참고.
 
+> **macOS 서명 주의**: 배포용 ad-hoc 서명은 CI(`.github/workflows/release.yml`)에서만 주입합니다.
+> 따라서 위 로컬 `npm run dist` 산출물은 **유효 서명이 안 된** 번들이라 다른 mac 으로 옮기면
+> "손상" 으로 차단됩니다(같은 빌드 머신에선 quarantine 이 없어 실행됨). 배포 가능한 서명본은
+> 릴리즈 워크플로우가 만들며, 로컬에서 같은 결과를 보려면
+> `npm run build && npx electron-builder --mac -c.mac.identity=-` 로 ad-hoc 서명을 직접 줘야 합니다
+> (`electron-vite build` 로 `out/` 를 먼저 만든 뒤 패키징).
+
 ## 한계
 
 - canalystii 드라이버는 **송신 ACK·버스에러·수신 버퍼 오버플로 보고를 지원하지 않습니다.** TX는 "전송 큐잉" 수준입니다.
@@ -258,6 +265,24 @@ npm run dist
 
 ## 트러블슈팅
 
+- **macOS: "‘CANalyst-II Controller’이(가) 손상되었기 때문에 열 수 없습니다" / "확인되지 않은 개발자"**:
+  배포 설치본은 Apple **공증(notarization)을 하지 않은** ad-hoc 서명 빌드입니다(유료 Developer ID
+  미사용). 다운로드한 `.app`/`.dmg` 의 **모든 파일**에 격리(quarantine) 속성이 붙어 Gatekeeper 가
+  실행을 막습니다. 앱을 `/Applications` 등으로 옮긴 뒤 **방법 A 를 권장**합니다:
+  ```bash
+  # 방법 A) 격리 속성을 번들 전체에서 재귀(-r)로 제거 — 가장 확실, 모든 macOS 에서 동작.
+  #   이 앱은 실행 시 동봉 코어(Resources/core/canalyst-core)를 자식 프로세스로 띄우는데,
+  #   그 코어에도 quarantine 이 붙어 있어 -r 로 함께 제거해야 백엔드까지 정상 기동한다.
+  xattr -dr com.apple.quarantine "/Applications/CANalyst-II Controller.app"
+  ```
+  - 방법 B) **시스템 설정 → 개인정보 보호 및 보안** 하단의 "확인 없이 열기"(Open Anyway).
+    단 이 버튼은 **"확인되지 않은 개발자"** 메시지에서만 보이고(첫 줄의 **"손상"** 메시지에는
+    안 뜸), 앱 자체만 승인하므로 **자식 코어의 quarantine 은 남아 GUI 는 떠도 백엔드 연결이
+    안 될 수 있습니다** → 그 경우 방법 A 로 해결하세요. (macOS 15+ 는 Finder 우클릭 → "열기"
+    우회가 막혀 이 GUI 경로만 남았습니다.)
+  > 참고: 설치본의 ad-hoc 코드서명 **자체는 유효**합니다(서명이 깨진 진짜 "손상"이 아니라
+  > 미공증+격리 때문에 차단되는 것). 무마찰 설치가 필요하면 릴리즈 빌드에 Developer ID
+  > 서명+공증을 붙여야 합니다(`.github/workflows/release.yml` 의 mac 서명 분기 주석 참고).
 - **`Error: Electron uninstall`**: Electron 바이너리 미설치 → `node ui/node_modules/electron/install.js` 실행.
 - **`npm ERESOLVE` (vite/plugin-react)**: `electron-vite@5` 는 vite 7까지 지원 → `vite@7` + `@vitejs/plugin-react@5` 로 맞춥니다.
 - **`No backend available` (usb.core.NoBackendError)**: pyusb 의 libusb-1.0 백엔드 부재. `libusb-package` 가 의존성에 포함되어 `pip install -e .` 시 자동 설치되고, 코어가 번들 백엔드를 자동 주입하므로 별도 DLL 설치가 필요 없습니다.

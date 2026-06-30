@@ -38,11 +38,24 @@ nsis:
 
 # macOS: dmg (호스트가 mac 일 때만 빌드됨)
 # icon 은 build/icon.png 를 명시. .icns 는 electron-builder 가 PNG 에서 자동 생성한다.
+#
+# 코드서명: electron-builder 가 앱 번들을 반드시 (재)서명하게 해야 한다. 서명을 건너뛰면
+#   Electron 프리빌트의 linker ad-hoc 서명이 그대로 남는데, 패키징이 번들을 수정
+#   (실행파일 리네임·리소스/Info.plist 추가)하므로 그 서명이 번들과 불일치(무효 봉인)된다.
+#   → 다운로드(quarantine)된 앱을 macOS 가 "손상되어 열 수 없음" 으로 차단해 설치 불가.
+#   서명 identity 는 CI(release.yml)에서 주입한다: 인증서가 없으면 ad-hoc('-')으로
+#   유효 서명만 생성(공증은 아님 → 사용자 1회 Gatekeeper 우회 필요, README 참고).
+# hardenedRuntime + entitlements: ad-hoc/정식 서명 모두에서 V8 JIT·동봉 코어 로드가
+#   라이브러리 검증에 막히지 않도록 build/entitlements.mac.plist 의 예외를 적용한다.
+#   (정식 Developer ID 공증 경로로 확장할 때도 hardenedRuntime 은 필수 전제다.)
 mac:
   icon: build/icon.png
   target:
     - dmg
   category: public.app-category.developer-tools
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
 
 # Linux: AppImage (호스트가 linux 일 때만 빌드됨)
 linux:

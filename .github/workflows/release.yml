@@ -168,8 +168,18 @@ jobs:
       # 타겟(nsis/dmg/AppImage)은 electron-builder.yml 의 OS별 target 을 따른다.
       # --publish never: 토큰이 env 에 있고 태그 트리거인 상태에서 electron-builder 가
       #   스스로 릴리즈를 만들려다 아래 release 잡과 충돌하는 것을 막는다.
-      # CSC_IDENTITY_AUTO_DISCOVERY=false: macOS 에서 서명 인증서 자동 탐색을 끈다
-      #   (CI 에 인증서가 없을 때 서명 시도 실패를 막음). win/linux 에는 무해.
+      # macOS 코드서명: 인증서가 없어도 ad-hoc('-')으로 번들을 반드시 (재)서명한다.
+      #   과거엔 CSC_IDENTITY_AUTO_DISCOVERY=false 로 서명을 통째로 건너뛰었는데, 그러면
+      #   Electron 프리빌트의 linker ad-hoc 서명이 패키징으로 수정된 번들과 불일치(무효
+      #   봉인)로 남아, 다운로드(quarantine)된 .app 을 macOS 가 "손상되어 열 수 없음"
+      #   으로 차단했다(= mac 설치 불가의 근본 원인). ad-hoc 재서명은 유효 봉인을 만들어
+      #   이 차단을 해소한다. 단 공증(notarize)은 아니므로 사용자가 최초 1회 Gatekeeper
+      #   우회가 필요하다(README 트러블슈팅 참고). hardenedRuntime·entitlements 설정은
+      #   electron-builder.yml 의 mac 섹션에 있다(ad-hoc 라이브러리 검증 예외 포함).
+      #   · Developer ID 공증으로 확장하려면 이 분기를 SIGN_ARGS 대신 CSC_LINK/
+      #     CSC_KEY_PASSWORD/APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID secrets +
+      #     `-c.mac.notarize=true` 로 바꾸면 된다(인증서 보유 시 무마찰 설치).
+      #   · win/linux 는 mac 서명과 무관하므로 SIGN_ARGS 가 빈 값이다.
       #
       # 설치본 파일명을 -c.<타깃>.artifactName 으로 통일한다(electron-builder.yml
       # 미수정 → 로컬 npm run dist 의 기본 파일명은 그대로 유지). -c.x=y 는
@@ -183,14 +193,15 @@ jobs:
       #   레벨 shell: bash + 따옴표로 단일 argv 가 보장되므로 안전하다. 되돌리지 말 것.
       - name: UI 패키징 (electron-builder)
         working-directory: ui
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: |
           npm pkg set version="${{ steps.ver.outputs.semver }}"
           ART='CANalyst-II-Controller-${{ steps.ver.outputs.version }}-${{ matrix.art_tail }}'
           echo "artifactName=$ART"
+          # mac 만 ad-hoc 서명 인자 추가(win/linux 는 빈 값 → 무영향).
+          SIGN_ARGS=""
+          if [ "${{ matrix.asset }}" = "mac" ]; then SIGN_ARGS="-c.mac.identity=-"; fi
           npx electron-builder ${{ matrix.eb_platform }} --publish never \
-            -c.${{ matrix.art_target }}.artifactName="$ART"
+            -c.${{ matrix.art_target }}.artifactName="$ART" $SIGN_ARGS
 
       # OS별 설치본을 워크플로우 아티팩트로 업로드(이름은 OS별로 구분 — v4 는 중복 이름 거부).
       # release 잡이 이 아티팩트들을 모두 받아 GitHub Release 에 첨부한다.
