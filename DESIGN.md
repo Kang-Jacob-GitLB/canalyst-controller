@@ -22,7 +22,13 @@ Unlike a cool, blue-black dark theme, every neutral here is **warm-leaning**, ha
 - Korean-first copy; numerals/units/codes inline (`500,000 bps`, `0x18F`, `ISDB-T`)
 - Elevation from **borders + tonal shifts**, not heavy shadows
 - Semantic colors tuned for legibility on dark: danger `#f2685f`, warning `#e8a33d`, info `#5b95e0`, success `#34c77b`
-- The LITBIG mark (orange face + ink chamfered frame) is the brand anchor; inverse (white) on dark surfaces
+- The LITBIG **vertical lockup** (chamfered cube mark over the `LITBIG` wordmark) is the official CI — the only sanctioned lockup; inverse (white-monochrome) on dark surfaces
+
+### Brand lockup (CI)
+
+The updated LITBIG design system unified on the **vertical lockup** — `logo-litbig-vertical.png` (the chamfered cube mark stacked above the `LITBIG` wordmark) — as the only sanctioned CI; the horizontal lockup is **deprecated — do not use it**. On dark/ink surfaces render it white-monochrome via the brand's inverse-filter trick (`filter: brightness(0) invert(1)`), which drops the orange cube so orange stays reserved for functional signals (CTA / live / TX / hero number). Don't recolor, rotate, or add effects; keep clear space around it.
+
+This app's sidebar header is intentionally **text-only** — the `CANalyst-II` product wordmark (display) over the `CAN 분석 콘솔` descriptor. The lockup is documented here as the brand reference for brand surfaces outside the live monitor (splash / about / installer), not stamped into the working chrome, so the warm-ink monitor stays the only thing that glows.
 
 ## 2. Color Palette & Roles
 
